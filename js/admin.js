@@ -1,7 +1,7 @@
 // 관리자 화면 (교사 노트북, 수업 전·후)
 import {
   db, auth, whenAuth, isTeacherUser, teacherSignIn, logout, pageUrl,
-  doc, collection, onSnapshot, getDocs, getDoc, setDoc, updateDoc, writeBatch, serverTimestamp, query, where,
+  doc, collection, onSnapshot, getDocs, getDocsFromServer, getDoc, setDoc, updateDoc, writeBatch, serverTimestamp, query, where,
 } from './fb.js';
 import { $, $$, esc, ING, Q, classOf, classLabel, loadNames, saveNames, randomId, toast, ask, qrSvg, recipeOf } from './util.js';
 
@@ -164,8 +164,14 @@ function bind() {
   }));
   $$('[data-del]').forEach((b) => b.addEventListener('click', async () => {
     if (!(await ask('이 수업의 데이터를 모두 삭제할까요?<br>되돌릴 수 없어요.', { ok: '삭제', danger: true }))) return;
-    await deleteSession(b.dataset.del);
-    toast('삭제했어요.');
+    try {
+      toast('삭제하는 중…', 60000);
+      await deleteSession(b.dataset.del);
+      toast('삭제했어요.');
+    } catch (e) {
+      console.error(e);
+      deleteFailed(e);
+    }
   }));
   $$('[data-xlsx]').forEach((b) => b.addEventListener('click', () => exportClass(b.dataset.xlsx).catch((e) => { console.error(e); toast('내보내지 못했어요.'); })));
   $$('[data-wipe]').forEach((b) => b.addEventListener('click', () => wipeClass(b.dataset.wipe)));
@@ -210,30 +216,46 @@ async function openSession(cid) {
 
 const SUBS = ['claims', 'devices', 'groups', 'ratings', 'summaries', 'tastes', 'private'];
 async function deleteSession(sid) {
+  // 수업 문서를 먼저 지워 열린 교사 화면이 더 이상 쓰지 못하게 한다
+  const first = writeBatch(db);
+  first.delete(doc(db, 'sessions', sid));
+  await first.commit();
   for (const sub of SUBS) {
-    const qs = await getDocs(collection(db, 'sessions', sid, sub));
+    const qs = await getDocsFromServer(collection(db, 'sessions', sid, sub));
     for (let i = 0; i < qs.docs.length; i += 400) {
       const b = writeBatch(db);
       qs.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
       await b.commit();
     }
   }
-  const b = writeBatch(db);
-  b.delete(doc(db, 'sessions', sid));
-  await b.commit();
+}
+
+function deleteFailed(e) {
+  const denied = e?.code === 'permission-denied';
+  ask(denied
+    ? '삭제하지 못했어요.<br>Firebase 콘솔의 <b>보안 규칙이 최신인지</b> 확인해 주세요.'
+    : `삭제하지 못했어요.<br>인터넷 연결을 확인하고 다시 눌러 주세요.<br><span class="mute">${esc(e?.code || e?.message || '')}</span>`, { ok: '확인', cancel: '' });
 }
 
 async function wipeClass(cid) {
   const ids = Object.entries(sessions).filter(([, s]) => s.classId === cid).map(([id]) => id);
   if (!(await ask(`${classLabel(cid)} 수업 데이터 ${ids.length}개를 모두 삭제할까요?<br><b>엑셀로 먼저 내보냈는지</b> 확인하세요. 되돌릴 수 없어요.`, { ok: '삭제', danger: true }))) return;
   const alsoRoster = await ask('출석부(학번 목록)도 삭제할까요?', { ok: '출석부도 삭제', cancel: '수업만 삭제' });
-  for (const id of ids) await deleteSession(id);
-  if (alsoRoster) {
-    const b = writeBatch(db);
-    b.delete(doc(db, 'classes', cid));
-    await b.commit();
+  try {
+    for (const [i, id] of ids.entries()) {
+      toast(`삭제하는 중… (${i + 1}/${ids.length})`, 60000);
+      await deleteSession(id);
+    }
+    if (alsoRoster) {
+      const b = writeBatch(db);
+      b.delete(doc(db, 'classes', cid));
+      await b.commit();
+    }
+    toast('삭제했어요.');
+  } catch (e) {
+    console.error(e);
+    deleteFailed(e);
   }
-  toast('삭제했어요.');
 }
 
 // ---------- 엑셀 ----------

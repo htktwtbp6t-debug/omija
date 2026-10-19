@@ -76,7 +76,7 @@ export function buildSummaries(ratings) {
 const deepCanon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort()) : x));
 const lastWritten = {};
 function writeSummaries(S) {
-  if (!S.sess) return;
+  if (!S.sess || !S.sess.open) return; // 닫혔거나 삭제된 수업에는 쓰지 않음
   const built = buildSummaries(S.ratings);
   for (const [g, data] of Object.entries(built)) {
     const cur = S.summaries[g] ? { rounds: S.summaries[g].rounds } : null;

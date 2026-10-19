@@ -95,7 +95,7 @@ function syncGroup() {
     st.gdoc = d.exists() ? d.data() : null;
     syncRating();
     render();
-  }, (e) => console.error('group', e));
+  }, () => {});
   unsub.summ = onSnapshot(doc(db, 'sessions', sid, 'summaries', g), (d) => {
     st.summ = d.exists() ? d.data() : null;
     render();
