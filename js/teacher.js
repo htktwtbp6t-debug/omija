@@ -35,7 +35,11 @@ export function watchClass(sid, onChange, { aggregate = true } = {}) {
   const S = { sid, sess: null, claims: {}, groups: {}, summaries: {}, tastes: {}, blind: null, ratings: [] };
   const offs = [];
   const fire = () => S.sess && onChange(S);
-  offs.push(onSnapshot(sref(sid), (d) => { S.sess = d.exists() ? d.data() : null; if (!S.sess) onChange(S); else fire(); },
+  offs.push(onSnapshot(sref(sid), { includeMetadataChanges: true }, (d) => {
+    if (!d.exists() && d.metadata.fromCache) return; // 서버 확인 전에는 '없음'으로 보지 않음
+    S.sess = d.exists() ? d.data() : null;
+    if (!S.sess) onChange(S); else fire();
+  },
     (e) => { console.error(e); onChange({ ...S, error: e }); }));
   offs.push(onSnapshot(scol(sid, 'claims'), (qs) => { S.claims = Object.fromEntries(qs.docs.map((d) => [d.id, d.data()])); fire(); }));
   offs.push(onSnapshot(scol(sid, 'groups'), (qs) => { S.groups = Object.fromEntries(qs.docs.map((d) => [d.id, d.data()])); fire(); }));

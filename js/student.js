@@ -1,6 +1,6 @@
 // 학생 화면 (모둠장 패드·소믈리에 포함)
 import {
-  db, studentSignIn, doc, collection, onSnapshot, getDoc, setDoc, updateDoc, writeBatch, serverTimestamp,
+  db, studentSignIn, doc, collection, onSnapshot, setDoc, updateDoc, writeBatch, serverTimestamp,
 } from './fb.js';
 import {
   $, esc, ING, Q, TOTAL, MAX_ROUNDS, gColor, emptyRecipe, sumRecipe, recipeOf, cylinder,
@@ -42,11 +42,18 @@ async function start() {
     view(`<div class="center"><div><h2>접속 오류</h2><p class="hint">와이파이를 확인하고 새로고침해 주세요.</p></div></div>`);
     return;
   }
-  const dev = await getDoc(doc(db, 'sessions', sid, 'devices', st.uid)).catch(() => null);
-  if (dev?.exists()) st.stu = dev.data().stu;
+  // 서버 확인 전(캐시만 본 상태)에는 '없음'으로 판단하지 않고 연결 중으로 기다린다
+  const meta = { includeMetadataChanges: true };
+  connecting();
+  unsub.dev = onSnapshot(doc(db, 'sessions', sid, 'devices', st.uid), meta, (d) => {
+    if (d.exists()) { st.stu = d.data().stu; st.devReady = true; }
+    else if (!d.metadata.fromCache) st.devReady = true;
+    if (st.devReady) { syncGroup(); render(); }
+  }, (e) => console.error('device', e));
 
-  unsub.sess = onSnapshot(doc(db, 'sessions', sid), (s) => {
+  unsub.sess = onSnapshot(doc(db, 'sessions', sid), meta, (s) => {
     if (!s.exists()) {
+      if (s.metadata.fromCache) return connecting();
       view(`<div class="center"><div><h2>수업을 찾을 수 없어요</h2><p class="hint">QR을 다시 찍어 주세요.</p></div></div>`);
       return;
     }
@@ -61,6 +68,15 @@ async function start() {
     st.claims = new Set(qs.docs.map((d) => d.id));
     render();
   }, () => {});
+}
+
+let slowTimer;
+function connecting() {
+  if (main.dataset.view === 'connecting') return;
+  view(`<div class="center"><div><span class="spin"></span><h2 style="margin-top:14px">연결하는 중…</h2>
+    <p class="hint" id="slow" hidden>오래 걸리면 와이파이를 확인하고 새로고침해 주세요.</p></div></div>`, 'connecting');
+  clearTimeout(slowTimer);
+  slowTimer = setTimeout(() => { const el = $('#slow'); if (el) el.hidden = false; }, 8000);
 }
 
 // 내 모둠이 정해지면 모둠 문서·평균 구독
@@ -114,7 +130,7 @@ function syncTaste(on) {
 // ---------- 화면 고르기 ----------
 function render() {
   const s = st.sess;
-  if (!s) return;
+  if (!s || !st.devReady) return;
   // 글을 쓰는 중이면 다시 그리지 않음 (키보드가 닫히지 않게)
   const act = document.activeElement;
   if (act && main.contains(act) && act.matches('textarea,input')) return;
