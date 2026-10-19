@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>관리자 · 오미자 음료 개발</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<style>
+body{background:#EFE6DA}
+.adm{max-width:1100px;margin:0 auto;padding:28px 24px 80px}
+.adm-head{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.adm-head h1{font-family:var(--disp);font-weight:400;font-size:40px;line-height:1.1}
+.adm h2{font-family:var(--disp);font-weight:400;font-size:24px;margin-bottom:10px}
+.adm section{margin-bottom:28px}
+.paste{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:800px){.paste{grid-template-columns:1fr}}
+.paste textarea{width:100%;min-height:220px;border:var(--bd);border-radius:12px;padding:10px 12px;font-family:var(--num);background:#fff}
+.prev{max-height:260px;overflow:auto}
+.classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+.cls h3{font-family:var(--disp);font-weight:400;font-size:26px;display:flex;justify-content:space-between;align-items:center}
+.cls .meta{color:var(--mute);font-weight:600;margin:4px 0 12px}
+.cls .ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.cls select{border:2px solid var(--ink);border-radius:8px;padding:6px 8px;background:#fff;font-weight:700}
+.sess{border:2px solid var(--ink);border-radius:12px;padding:10px 12px;margin-top:8px;background:var(--cream)}
+.sess.open{background:#E3F7EE}
+.sess .t{display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:8px}
+.sess .acts{display:flex;flex-wrap:wrap;gap:6px}
+.sess .acts .btn{font-size:.82rem;padding:.35em .75em;box-shadow:2px 2px 0 var(--ink)}
+.danger{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.qrm .qrbox{background:#fff;border:var(--bd);border-radius:14px;padding:10px;margin:12px auto;max-width:340px}
+.qrm .qrbox svg{display:block;width:100%;height:auto}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+<main id="main" class="adm"><div class="center"><span class="spin"></span></div></main>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>
