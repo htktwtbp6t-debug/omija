@@ -78,30 +78,32 @@ const nm = (stu) => names[stu] || '';
 
 R.hook = () => `<div class="l">
     <span class="pill" style="align-self:flex-start">과탐실2 · ${cls()} · ${today()}</span>
-    <h1>라면은 어떻게<br><span class="r">개발</span>될까?<br><span class="box2">오늘은 우리가 개발팀</span></h1>
-    <p class="q">재료는 <b>우리 동네 특산품</b>.<br>목표는 우리 반에서 제일 맛있는 음료.</p>
-    <div class="loop"><span>아이디어</span><em>→</em><span class="k">시제품</span><em>→</em><span class="k">맛 평가</span><em>→</em><span class="k">고치기</span><em>↺ 3번까지</em></div>
+    <h1>‘맛있다’를 <span class="r">숫자</span>로<br>말할 수 있을까?<br><span class="box2">오늘은 레시피 찾기</span></h1>
+    <p class="q"><b>우리 동네 특산품</b> 오미자로 음료를 만들고,<br>맛있는 음료가 어떤지 <b>데이터</b>로 남겨 보자.</p>
+    <div class="loop"><span class="k">오늘 · 레시피 찾기</span><em>→</em><span>다음 · 당도·산도 정량 분석</span><em>→</em><span>맛있는 음료의 데이터</span></div>
   </div>
   <div class="rc">${cylinder({ omija: 8, syrup: 4, apple: 4, pear: 1, water: 3 })}<div class="badge">오미자<small>다섯 가지 맛</small></div></div>
   <div class="marq"><div>${'<span>안전</span><span class="s">✦</span><span>손 씻기</span><span class="s">✦</span><span>정직한 기록</span><span class="s">✦</span><span>모둠 레시피는 하나</span><span class="s">✦</span><span>협력</span><span class="s">✦</span>'.repeat(2)}</div></div>`;
 
-R.process = () => `<div class="hd"><h2>식품은 이렇게 <span class="r">개발</span>돼요</h2><span class="pill">라면도, 음료도</span></div>
-  <div class="flow">
-    <div class="st"><b>아이디어</b><p>어떤 맛을<br>만들까?</p></div><em>→</em>
-    <div class="st k"><b>시제품</b><p>작게 만들어<br>본다</p></div><em>→</em>
-    <div class="st k"><b>맛 평가</b><p>여러 사람이<br>점수를 매긴다</p></div><em>→</em>
-    <div class="st k"><b>고치기</b><p>점수를 보고<br>배합을 바꾼다</p></div><em>→</em>
-    <div class="st"><b>출시</b><p>제일 좋은<br>레시피로!</p></div>
+R.process = () => `<div class="hd"><h2>탐구의 <span class="r">큰 그림</span></h2><span class="pill">오늘은 1단계</span></div>
+  <div class="road">
+    <div class="box now"><span class="tag">오늘 · 1차시</span><b>맛있는 레시피 찾기</b><p>사람의 감각으로 평가 (관능평가)</p>
+      <div class="mini"><span>만들기</span><em>→</em><span>맛 평가</span><em>→</em><span>고치기</span><em>↺ 3번까지</em></div>
+      <div class="mini"><span>반 대표 블라인드 시음회</span></div></div>
+    <em>→</em>
+    <div class="box"><span class="tag">다음 · 2차시</span><b>정량 분석</b><p>측정값으로 평가</p>
+      <div class="mini"><span>단맛 → 굴절당도계 (°Brix)</span></div><div class="mini"><span>신맛 → 산·염기 적정 (NaOH)</span></div></div>
+    <em>→</em>
+    <div class="box end"><b>맛있는 음료의<br>데이터</b><p>얼마나 달고<br>얼마나 실까?</p></div>
   </div>
-  <div class="flow-back"><span>↺ 마음에 들 때까지 반복</span></div>
-  <p class="lead" style="text-align:center;margin-top:3cqi">회사에서는 <b>수십 번</b> 반복해요. 오늘 우리는 <b class="r">3번까지</b>!</p>`;
+  <p class="lead" style="text-align:center;margin-top:3cqi">분석하려면 먼저 <b>‘맛있는 음료’</b>라는 시료가 있어야겠죠? 오늘은 <b class="r">그 레시피를 찾는 날</b>이에요.</p>`;
 
-R.omija = () => `<div class="hd"><h2>우리 동네 특산품 <span class="r">오미자</span>로<br>음료를 개발해 보자</h2></div>
+R.omija = () => `<div class="hd"><h2>우리 동네 특산품 <span class="r">오미자</span>로<br>음료를 만들어 보자</h2></div>
   <p class="lead">오미자(五味子)는 다섯 가지 맛이 난다는 열매예요.</p>
   <div class="tastes5"><span style="background:var(--g2)">단맛</span><span style="background:var(--g3)">신맛</span><span>쓴맛</span><span>짠맛</span><span style="background:var(--g1);color:#fff">매운맛</span></div>
   <div class="goal">
-    <div class="box"><b>오늘의 목표</b>모둠별로 시제품을 만들고 맛을 평가하며<br>우리 반 <span class="hl">최고의 오미자 음료</span>를 찾는다.</div>
-    <div class="box" style="background:#ECE5FF"><b>다음 차시 예고</b>어떤 경우에 <span class="hl">맛있다고 느끼는지</span><br>데이터를 모아 분석해요.</div>
+    <div class="box"><b>오늘의 목표</b>만들고 → 평가하고 → 고쳐서<br>우리 반이 고른 <span class="hl">가장 맛있는 레시피</span>를 찾는다.</div>
+    <div class="box" style="background:#ECE5FF"><b>다음 차시</b>그 레시피의 <span class="hl">당도와 산도</span>를<br>측정해 데이터로 남긴다.</div>
   </div>`;
 
 R.promise = () => `<div class="hd"><h2>오늘의 약속</h2></div>
@@ -270,7 +272,7 @@ R.result = () => {
 
 R.wrap = () => `<div class="wrap-s"><div>
     <span class="pill">다음 차시</span>
-    <h1 style="margin-top:2cqi">맛있는 음료는<br><span class="r">얼마나 달고</span><br><span class="r">얼마나 신지</span><br>숫자로 재 보자</h1></div>
+    <h1 style="margin-top:2cqi">오늘 찾은 레시피,<br><span class="r">얼마나 달고</span><br><span class="r">얼마나 신지</span><br>숫자로 재 보자</h1></div>
     <div class="todo"><span>🧪 남은 시료는 폐기</span><span>🧽 주사기·컵 씻어 정리</span><span>🧻 책상 닦기</span><span>👋 수고했어요!</span></div></div>`;
 
 // 그린 뒤 이벤트 연결

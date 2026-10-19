@@ -10,8 +10,8 @@ export const stageIdx = (s) => STAGES.indexOf(s);
 
 // 발표 슬라이드 순서. stage는 그 슬라이드에 오면 수업이 그 단계까지 진행됨을 뜻한다 (뒤로 가도 단계는 그대로).
 export const DECK = [
-  { id: 'hook', stage: 'intro', title: '도입: 라면은 어떻게 개발될까?' },
-  { id: 'process', stage: 'intro', title: '도입: 식품 개발 과정' },
+  { id: 'hook', stage: 'intro', title: '도입: 맛을 숫자로?' },
+  { id: 'process', stage: 'intro', title: '도입: 탐구의 큰 그림' },
   { id: 'omija', stage: 'intro', title: '도입: 우리 동네 특산품 오미자' },
   { id: 'promise', stage: 'intro', title: '도입: 오늘의 약속' },
   { id: 'join', stage: 'join', title: 'QR 접속' },
