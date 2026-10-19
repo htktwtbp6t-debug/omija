@@ -60,14 +60,27 @@ tabs.addEventListener('click', (e) => {
   window.scrollTo(0, 0);
 });
 
-function render() {
+let pending = false;
+function render(force = false) {
   if (!S) return;
-  // 선택 상자를 고르는 중이면 다시 그리지 않음
-  if (document.activeElement?.tagName === 'SELECT') return;
+  // 선택 상자를 고르는 중이면 잠깐 미뤘다가, 선택이 끝나거나 3초 뒤에는 무조건 다시 그린다 (아이폰은 선택 상자가 포커스를 계속 쥐고 있음)
+  const act = document.activeElement;
+  if (!force && act?.tagName === 'SELECT' && main.contains(act)) {
+    if (!pending) {
+      pending = true;
+      const again = () => { if (!pending) return; pending = false; render(true); };
+      act.addEventListener('blur', again, { once: true });
+      setTimeout(again, 3000);
+    }
+    return;
+  }
+  pending = false;
   $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
   const idx = S.sess.slide || 0;
   const head = `<div class="rm-head"><b>${classLabel(S.sess.classId)}</b>
-    <span class="pill">${S.sess.open ? STAGE_NAME[S.sess.stage] : '닫힌 수업'}</span></div>`;
+    <span class="pill">${S.sess.open ? STAGE_NAME[S.sess.stage] : '닫힌 수업'}</span></div>
+    ${tab === 'go' ? '' : `<div class="mini"><button data-nav="-1" aria-label="이전">‹</button>
+      <span><b class="num">${idx + 1}/${DECK.length}</b> ${DECK[idx].title}</span><button data-nav="1" class="nx">다음 ›</button></div>`}`;
   main.innerHTML = head + ({ go: tabGo, att: tabAtt, grp: tabGrp, taste: tabTaste, end: tabEnd }[tab])();
   bind();
 }
