@@ -37,37 +37,61 @@ async function start() {
       return;
     }
     st.uid = u.uid;
+    await u.getIdToken(); // 로그인 직후 권한 확인이 늦어 첫 읽기가 거절되는 일을 막는다
   } catch (e) {
     console.error(e);
     view(`<div class="center"><div><h2>접속 오류</h2><p class="hint">와이파이를 확인하고 새로고침해 주세요.</p></div></div>`);
     return;
   }
+  connecting();
+  watchCore();
+}
+
+// 접속 직후에는 '수업 없음'·권한 오류가 잠깐 났다가 풀리는 경우가 있어,
+// 바로 오류를 띄우지 않고 '연결 중'으로 다시 시도한다. 30초 넘게 안 되면 그때 안내한다.
+const RETRY_MS = 3000, RETRY_MAX = 10;
+let retries = 0, retryTimer = null;
+function watchCore() {
+  unsub.dev?.(); unsub.sess?.(); unsub.claims?.();
   // 서버 확인 전(캐시만 본 상태)에는 '없음'으로 판단하지 않고 연결 중으로 기다린다
   const meta = { includeMetadataChanges: true };
-  connecting();
   unsub.dev = onSnapshot(doc(db, 'sessions', sid, 'devices', st.uid), meta, (d) => {
     if (d.exists()) { st.stu = d.data().stu; st.devReady = true; }
     else if (!d.metadata.fromCache) st.devReady = true;
     if (st.devReady) { syncGroup(); render(); }
-  }, (e) => console.error('device', e));
+  }, (e) => retryCore('device', e));
 
   unsub.sess = onSnapshot(doc(db, 'sessions', sid), meta, (s) => {
     if (!s.exists()) {
       if (s.metadata.fromCache) return connecting();
-      view(`<div class="center"><div><h2>수업을 찾을 수 없어요</h2><p class="hint">QR을 다시 찍어 주세요.</p></div></div>`);
-      return;
+      return retryCore('missing');
     }
+    retries = 0; clearTimeout(retryTimer); retryTimer = null;
     st.sess = s.data();
     syncGroup();
     render();
-  }, (e) => {
-    console.error(e);
-    view(`<div class="center"><div><h2>들어갈 수 없는 수업이에요</h2><p class="hint">QR을 다시 찍어 주세요.</p></div></div>`);
-  });
+  }, (e) => retryCore('session', e));
   unsub.claims = onSnapshot(collection(db, 'sessions', sid, 'claims'), (qs) => {
     st.claims = new Set(qs.docs.map((d) => d.id));
     render();
-  }, () => {});
+  }, (e) => retryCore('claims', e));
+}
+
+function retryCore(what, e) {
+  if (e) console.error(what, e);
+  if (retryTimer) return;
+  if (retries >= RETRY_MAX) {
+    const code = e?.code || what;
+    view(`<div class="center"><div><h2>수업에 연결하지 못했어요</h2>
+      <p class="hint">와이파이를 확인하고 다시 시도해 주세요.<br>계속 안 되면 QR을 다시 찍어 주세요.</p>
+      <p style="margin-top:16px"><button class="btn" id="retry">다시 시도</button></p>
+      <p class="hint" style="font-size:12px;margin-top:10px">(${esc(code)})</p></div></div>`);
+    $('#retry').onclick = () => location.reload();
+    return;
+  }
+  st.sess = null;
+  connecting();
+  retryTimer = setTimeout(() => { retryTimer = null; retries += 1; watchCore(); }, RETRY_MS);
 }
 
 let slowTimer;
@@ -83,7 +107,7 @@ function connecting() {
 function syncGroup() {
   const s = st.sess;
   let g = null;
-  if (st.stu && s.groupsConfirmed && s.groups) {
+  if (st.stu && s?.groupsConfirmed && s.groups) {
     for (const [k, v] of Object.entries(s.groups)) if (v.members?.includes(st.stu)) g = k;
   }
   if (g === st.g) return;
