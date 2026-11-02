@@ -233,12 +233,8 @@ export async function setupTasting(S) {
     const rec = best && recipeOf(gd.rounds[best]);
     if (rec) entries.push({ g, best, rec });
   }
-  const used = new Set();
-  const nums = [];
-  while (nums.length < entries.length) {
-    const n = String(100 + Math.floor(Math.random() * 900));
-    if (!used.has(n)) { used.add(n); nums.push(n); }
-  }
+  // 컵 번호는 1번부터. 어느 모둠이 몇 번인지는 무작위
+  const nums = entries.map((_, i) => String(i + 1));
   const cups = shuffle(nums);
   const map = {};
   const recipes = {};
@@ -249,7 +245,7 @@ export async function setupTasting(S) {
   const b = writeBatch(db);
   b.set(sref(S.sid, 'private', 'blind'), { map, recipes, made: {}, at: serverTimestamp() });
   for (const e of entries) b.update(sref(S.sid, 'groups', e.g), { best: e.best, step: 'done' });
-  b.update(sref(S.sid), { stage: 'tasting', tasting: { phase: 'prep', cups: [...nums].sort() } });
+  b.update(sref(S.sid), { stage: 'tasting', tasting: { phase: 'prep', cups: nums } });
   await b.commit();
 }
 

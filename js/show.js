@@ -169,7 +169,7 @@ R.rules = () => `<div class="hd"><h2>재료와 <span class="r">규칙</span></h2
 R.steps = () => `<div class="hd"><h2>한 번 만들 때 <span class="r">5분</span></h2><span class="pill">모둠장 화면이 단계별로 안내해요</span></div>
   <div class="steps4">
     <div class="box"><span class="no">1</span><b>배합 정하기</b><p>모둠이 같이 의논해서<br>재료 5가지 양을 정해요.<br>합계 20 mL.</p></div>
-    <div class="box"><span class="no">2</span><b>계량해 만들기</b><p>모둠장 화면을 보며<br>넣을 때마다 체크.<br>컵에 라벨 붙이기.</p></div>
+    <div class="box"><span class="no">2</span><b>계량해 만들기</b><p>모둠장 화면을 보며<br>넣을 때마다 체크.</p></div>
     <div class="box"><span class="no">3</span><b>맛 평가</b><p>각자 폰으로<br>단맛·신맛·향·색·종합 맛<br>1~5점.</p></div>
     <div class="box"><span class="no">4</span><b>다음 배합 결정</b><p>모둠 평균을 보고<br>더 맛있게 고칠 점을<br>이야기해요.</p></div>
   </div>`;
@@ -210,7 +210,7 @@ R.tprep = () => {
   }).join('');
   return `<div class="hd"><h2>반 대표 <span class="r">블라인드 시음회</span></h2><span class="pill">선생님도 어느 모둠인지 몰라요</span></div>
     <div class="tsteps">
-      <div class="box"><b>1. 소믈리에 1명</b>모둠에서 정해 모둠장 화면에서 골라요.</div>
+      <div class="box"><b>1. 소믈리에 1명</b>각자 폰으로 투표! 가장 많이 받은 사람 (동점이면 모둠장이 골라요).</div>
       <div class="box" style="background:#FFF4D6"><b>2. 선생님이 제조</b>컵 번호별 레시피로 100 mL씩. 어느 모둠 것인지는 비밀!</div>
       <div class="box" style="background:#E7F8F0"><b>3. 선정 이유 쓰기</b>베스트를 고른 이유 두 문장 + 2차시 예측.</div>
     </div>

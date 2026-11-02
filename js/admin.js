@@ -222,6 +222,17 @@ async function deleteSession(sid) {
   await first.commit();
   for (const sub of SUBS) {
     const qs = await getDocsFromServer(collection(db, 'sessions', sid, sub));
+    if (sub === 'groups') {
+      // 모둠 아래 소믈리에 투표도 지운다
+      for (const gd of qs.docs) {
+        const vs = await getDocsFromServer(collection(gd.ref, 'votes'));
+        if (!vs.empty) {
+          const b = writeBatch(db);
+          vs.docs.forEach((d) => b.delete(d.ref));
+          await b.commit();
+        }
+      }
+    }
     for (let i = 0; i < qs.docs.length; i += 400) {
       const b = writeBatch(db);
       qs.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));

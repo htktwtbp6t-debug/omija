@@ -112,7 +112,8 @@ function syncGroup() {
   }
   if (g === st.g) return;
   st.g = g;
-  unsub.g?.(); unsub.summ?.();
+  unsub.g?.(); unsub.summ?.(); unsub.votes?.();
+  unsub.votes = null; st.votes = {}; st.votesLeader = null;
   st.gdoc = null; st.summ = null;
   if (!g) return;
   unsub.g = onSnapshot(doc(db, 'sessions', sid, 'groups', g), (d) => {
@@ -140,6 +141,40 @@ function syncRating() {
     st.myRating = d.exists() ? d.data() : null;
     render();
   }, () => {});
+}
+
+// 소믈리에 투표 구독 (모둠장은 모둠 전체, 모둠원은 내 표만)
+function syncVotes() {
+  const L = isLeader();
+  if (unsub.votes && st.votesLeader === L) return;
+  unsub.votes?.();
+  st.votesLeader = L;
+  st.votes = {};
+  const col = collection(db, 'sessions', sid, 'groups', st.g, 'votes');
+  const put = (d) => { if (d.exists()) st.votes[d.id] = d.data().pick; else delete st.votes[d.id]; };
+  unsub.votes = L
+    ? onSnapshot(col, (qs) => { st.votes = {}; qs.docs.forEach(put); render(); }, () => {})
+    : onSnapshot(doc(col, st.stu), (d) => { put(d); render(); }, () => {});
+}
+async function castVote(pick) {
+  try {
+    await setDoc(doc(db, 'sessions', sid, 'groups', st.g, 'votes', st.stu), { pick, by: st.uid, at: serverTimestamp() });
+  } catch (e) {
+    console.error(e);
+    toast('투표를 저장하지 못했어요.');
+  }
+}
+// 투표 후보: 결석생 뺀 모둠원
+function candidates() {
+  const absent = new Set(st.sess.absent || []);
+  return members().filter((m) => !absent.has(m));
+}
+function voteChips() {
+  const mine = st.votes[st.stu];
+  return `<div class="choice">${candidates().map((m) => `<button class="${mine === m ? 'on' : ''}" data-vote="${esc(m)}"><span class="num">${esc(m)}</span>${m === st.stu ? ' (나)' : ''}</button>`).join('')}</div>`;
+}
+function bindVotes() {
+  main.querySelectorAll('[data-vote]').forEach((b) => b.addEventListener('click', () => castVote(b.dataset.vote)));
 }
 
 function syncTaste(on) {
@@ -244,7 +279,7 @@ function renderMyGroup() {
 }
 
 // ---------- ② 개발 ----------
-const STEPS = [['plan', '배합'], ['make', '계량'], ['label', '라벨'], ['rate', '맛 평가'], ['decide', '결정']];
+const STEPS = [['plan', '배합'], ['make', '계량'], ['rate', '맛 평가'], ['decide', '결정']];
 
 function stepBar(step) {
   const idx = STEPS.findIndex(([k]) => k === step);
@@ -263,7 +298,6 @@ function renderDevelop() {
   switch (gd.step) {
     case 'plan': return L ? leaderPlan(head, gd) : memberPlan(head, gd);
     case 'make': return L ? leaderMake(head, gd) : memberMake(head, gd);
-    case 'label': return L ? leaderLabel(head, gd) : memberLabel(head, gd);
     case 'rate': return L ? leaderRate(head, gd) : memberRate(head, gd);
     case 'decide': return decideView(head, gd, L);
     default: return doneView(head, gd);
@@ -348,7 +382,7 @@ function leaderMake(head, gd) {
     <div class="plan-wrap"><div class="vis">${cylinder(Object.fromEntries(ING.map((i) => [i.k, isOk(i.k) ? act[i.k] : 0])))}
       <div class="tot">${ING.reduce((s, i) => s + (isOk(i.k) ? act[i.k] : 0), 0)}<small> / ${tot} mL</small></div></div>
       <div>${rows}</div></div>
-    <div class="foot"><button class="btn block" id="go" ${allOk ? '' : 'disabled'}>${allOk ? '다 넣었어요' : '재료를 넣고 체크해요'}</button>
+    <div class="foot"><button class="btn block" id="go" ${allOk ? '' : 'disabled'}>${allOk ? '다 넣었어요 → 맛 평가 시작' : '재료를 넣고 체크해요'}</button>
       <button class="btn ghost sm" id="back">← 배합 다시 정하기</button></div>`, 'make');
   main.querySelectorAll('.stepper button').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.k;
@@ -359,7 +393,7 @@ function leaderMake(head, gd) {
     const k = b.dataset.ck;
     gUpdate({ [`rounds.${r}.checked.${k}`]: !ck[k] });
   }));
-  $('#go').addEventListener('click', () => gUpdate({ step: 'label' }));
+  $('#go').addEventListener('click', () => gUpdate({ step: 'rate' }));
   $('#back').addEventListener('click', () => {
     st.planKey = null;
     gUpdate({ step: 'plan' });
@@ -374,16 +408,6 @@ function memberMake(head, gd) {
   view(`${head}<h2>모둠장이 <span class="hl">만드는 중</span></h2>
     <ul class="hint" style="padding-left:1.2em;margin-bottom:12px"><li>재료마다 주사기를 따로 써요.</li><li>눈금은 눈높이에서 읽어요.</li><li>정한 양과 다르게 들어가면 정직하게 고쳐 적어요.</li></ul>
     <div class="plan-wrap"><div class="vis">${cylinder(act)}</div><div>${rows}</div></div>`, 'mmake');
-}
-
-function leaderLabel(head, gd) {
-  view(`${head}<div class="wait grow"><div class="big">컵에<br><span class="hl">시제품 ${gd.round}</span><br>라벨 붙이기</div>
-    <p class="hint">라벨을 붙이면 모둠원 모두 맛 평가를 시작해요.</p></div>
-    <div class="foot"><button class="btn block" id="go">붙였어요 → 맛 평가 시작</button></div>`, 'label');
-  $('#go').addEventListener('click', () => gUpdate({ step: 'rate' }));
-}
-function memberLabel(head, gd) {
-  view(`${head}<div class="wait grow"><div class="big">곧 맛 평가!</div><p class="hint">모둠장이 컵에 '시제품 ${gd.round}' 라벨을 붙이고 있어요.</p></div>`, 'mlabel');
 }
 
 // 맛 평가 폼
@@ -581,32 +605,50 @@ function renderTasting() {
     syncTaste(true);
     return sommelierView(t);
   }
+  if (t.phase === 'prep') syncVotes();
   if (t.phase === 'prep' && isLeader()) return leaderPrep(gd);
   const somm = gd.sommelier ? `<span class="num">${esc(gd.sommelier)}</span>${isSomm ? ' (나)' : ''}` : '아직 안 정함';
+  const voting = t.phase === 'prep' && !gd.sommelier;
   const msg = t.phase === 'prep'
-    ? '모둠장 화면에서 소믈리에를 정하고 선정 이유를 써요. 같이 이야기해 주세요.'
+    ? (voting ? '소믈리에로 뽑고 싶은 사람에게 투표해요. 가장 많이 받은 사람이 소믈리에! (동점이면 모둠장이 골라요)' : '모둠장이 선정 이유를 쓰고 있어요. 같이 이야기해 주세요.')
     : '소믈리에가 블라인드로 맛보는 중이에요. 결과를 기다려요!';
   view(`${topBar()}<h2>반 대표 <span class="hl">블라인드 시음회</span></h2><p class="hint">${msg}</p>
+    ${voting ? `<div class="box flat" style="margin-bottom:12px"><b>소믈리에 투표</b>${st.votes[st.stu] ? ' <span class="ok">✓ 투표함 (바꿀 수 있어요)</span>' : ''}<div style="margin-top:8px">${voteChips()}</div></div>` : ''}
     <div class="box flat" style="margin-bottom:12px"><b>우리 모둠 소믈리에</b><div style="font-size:1.4rem;font-weight:800">${somm}</div></div>
     <div class="box flat"><b>선정 이유</b><p style="margin-top:4px;white-space:pre-wrap">${esc(gd.reason) || '<span class="mute">작성 중…</span>'}</p>
       <p class="hint" style="margin:8px 0 0">학급 평균보다 단맛 ${PRED[gd.predSweet] || '–'} · 신맛 ${PRED[gd.predSour] || '–'}</p></div>`, 'tmember');
+  bindVotes();
 }
 
 const saveReason = debounce((v) => gUpdate({ reason: v }), 600);
 
 function leaderPrep(gd) {
-  const chips = members().map((m) => `<button class="${gd.sommelier === m ? 'on' : ''}" data-somm="${esc(m)}"><span class="num">${esc(m)}</span></button>`).join('');
+  // 투표 집계: 최다 득표자 중에서만 모둠장이 고른다
+  const cand = candidates();
+  const tally = Object.fromEntries(cand.map((m) => [m, 0]));
+  Object.values(st.votes).forEach((p) => { if (p in tally) tally[p] += 1; });
+  const nVoted = Object.keys(st.votes).length;
+  const top = Math.max(0, ...Object.values(tally));
+  const tops = top > 0 ? cand.filter((m) => tally[m] === top) : [];
+  const bars = cand.map((m) => `<div style="display:flex;justify-content:space-between;padding:3px 0;${tally[m] === top && top ? 'font-weight:800' : ''}"><span class="num">${esc(m)}</span><span>${'●'.repeat(tally[m]) || '<span class="mute">0</span>'}</span></div>`).join('');
+  const chips = tops.map((m) => `<button class="${gd.sommelier === m ? 'on' : ''}" data-somm="${esc(m)}"><span class="num">${esc(m)}</span></button>`).join('');
   const pred = (k, label) => `<p style="font-weight:800;margin:12px 0 6px">학급 평균보다 ${label}</p><div class="choice">
     ${['more', 'same', 'less'].map((v) => `<button data-pk="${k}" data-pv="${v}" class="${gd[k] === v ? 'on' : ''}">${{ more: `더 ${label === '단맛' ? '달다' : '시다'}`, same: '비슷하다', less: `덜 ${label === '단맛' ? '달다' : '시다'}` }[v]}</button>`).join('')}</div>`;
   view(`${topBar()}<h2>시음회 <span class="hl">준비</span></h2>
     <p class="hint">모둠 베스트: 시제품 ${gd.best ?? '–'} · 선생님이 이 레시피로 100 mL를 만들어요.</p>
-    <p style="font-weight:800;margin:6px 0">1. 소믈리에 1명을 정해 눌러요</p><div class="choice">${chips}</div>
+    <p style="font-weight:800;margin:6px 0">1. 소믈리에 투표 <span class="mute">(${nVoted} / ${cand.length}명 투표)</span></p>
+    <p class="hint" style="margin:0 0 6px">모둠장도 투표해요.</p>${voteChips()}
+    <div class="box flat" style="margin:10px 0">${bars}</div>
+    <p style="font-weight:800;margin:6px 0">${tops.length > 1 ? `동점! 소믈리에 1명을 골라요` : '최다 득표자를 눌러 소믈리에로 정해요'}</p>
+    ${tops.length ? `<div class="choice">${chips}</div>` : '<p class="hint">투표를 기다리는 중…</p>'}
+    ${gd.sommelier ? `<div class="note g" style="margin-top:8px">소믈리에: <b class="num">${esc(gd.sommelier)}</b></div>` : ''}
     <p style="font-weight:800;margin:14px 0 6px">2. 베스트로 고른 이유 (두 문장)</p>
     <textarea class="in" id="reason" maxlength="300" placeholder="예) 오미자 신맛을 사과즙으로 부드럽게 했다. 모둠원 평가에서 종합 맛이 가장 높았다.">${esc(gd.reason || '')}</textarea>
     <p style="font-weight:800;margin:14px 0 0">3. 2차시 예측: 우리 음료는…</p>
     ${pred('predSweet', '단맛')}${pred('predSour', '신맛')}
     <p class="hint" style="margin-top:14px">자동으로 저장돼요.</p>`, 'lprep');
   main.querySelectorAll('[data-somm]').forEach((b) => b.addEventListener('click', () => gUpdate({ sommelier: b.dataset.somm })));
+  bindVotes();
   main.querySelectorAll('[data-pk]').forEach((b) => b.addEventListener('click', () => gUpdate({ [b.dataset.pk]: b.dataset.pv })));
   const ta = $('#reason');
   ta.addEventListener('input', () => saveReason(ta.value.trim()));
