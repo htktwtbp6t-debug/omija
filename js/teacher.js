@@ -10,19 +10,21 @@ export const stageIdx = (s) => STAGES.indexOf(s);
 
 // 발표 슬라이드 순서. stage는 그 슬라이드에 오면 수업이 그 단계까지 진행됨을 뜻한다 (뒤로 가도 단계는 그대로).
 export const DECK = [
+  { id: 'join', stage: 'join', title: 'QR 접속 · 출석' },
+  { id: 'group', stage: 'grouping', title: '모둠 배치' },
+  { id: 'supplies', stage: 'grouping', title: '준비물 챙기기' },
   { id: 'hook', stage: 'intro', title: '도입: 맛을 숫자로?' },
   { id: 'process', stage: 'intro', title: '도입: 탐구의 큰 그림' },
   { id: 'omija', stage: 'intro', title: '도입: 우리 동네 특산품 오미자' },
   { id: 'promise', stage: 'intro', title: '도입: 오늘의 약속' },
-  { id: 'join', stage: 'join', title: 'QR 접속' },
-  { id: 'group', stage: 'grouping', title: '모둠 배치' },
   { id: 'rules', stage: 'brief', title: '개발 안내: 재료와 규칙' },
-  { id: 'steps', stage: 'brief', title: '개발 안내: 진행 순서' },
+  { id: 'steps', stage: 'brief', title: '개발 안내: 하는 방법' },
   { id: 'board', stage: 'develop', title: '시제품 개발 (현황판)' },
   { id: 'tprep', stage: 'tasting', phase: 'prep', title: '시음회 준비 (교사 제조)' },
   { id: 'ttaste', stage: 'tasting', phase: 'open', title: '블라인드 시음' },
   { id: 'reveal', stage: 'reveal', title: '결과 공개: 컵 뒤집기' },
   { id: 'result', stage: 'reveal', title: '결과 공개: 모둠별 정리' },
+  { id: 'measure', stage: 'reveal', title: '정리: 객관적 지표로' },
   { id: 'wrap', stage: 'wrap', title: '정리: 다음 차시 예고' },
 ];
 
@@ -198,7 +200,7 @@ export async function confirmGroups(S) {
   for (const g of Object.keys(S.sess.groups || {})) {
     if (S.groups[g]) continue;
     b.set(sref(S.sid, 'groups', g), {
-      round: 1, step: 'plan', rounds: {}, best: null, reason: '', predSweet: null, predSour: null, sommelier: null,
+      round: 1, step: 'prep', rounds: {}, best: null, reason: '', predSweet: null, predSour: null, sommelier: null,
       updatedAt: serverTimestamp(),
     });
   }
@@ -298,6 +300,16 @@ export async function computeResults(S) {
   });
 }
 
+// 카운트다운 (교사가 켤 때만 TV 구석에 작게). end = 끝나는 시각(ms)
+export async function setTimer(S, sec) {
+  await updateDoc(sref(S.sid), { timer: sec ? { end: Date.now() + sec * 1000, sec } : null });
+}
+export async function addTimer(S, sec) {
+  const t = S.sess.timer;
+  if (!t?.end) return setTimer(S, sec);
+  await updateDoc(sref(S.sid), { timer: { end: Math.max(Date.now(), t.end) + sec * 1000, sec: (t.sec || 0) + sec } });
+}
+
 export async function closeSession(S) {
   await updateDoc(sref(S.sid), { open: false, stage: 'wrap', closedAt: serverTimestamp() });
 }
@@ -314,11 +326,12 @@ export function groupStatus(S, g) {
   const present = (S.sess.groups?.[g]?.members || []).filter((m) => !absent.has(m));
   const done = S.summaries[g]?.rounds?.[r]?.done || [];
   const map = {
-    plan: ['배합 정하는 중', `시제품 ${r}`],
-    make: ['계량 중', `시제품 ${r} · 재료 ${Object.values(gd.rounds?.[r]?.checked || {}).filter(Boolean).length}/5`],
-    label: ['라벨 붙이는 중', `시제품 ${r}`],
-    rate: ['맛 평가 중', `시제품 ${r} · ${done.length}/${present.length}명`],
-    decide: ['다음 배합 의논 중', `시제품 ${r} 결과 보는 중`],
+    prep: ['준비물 챙기는 중', ''],
+    free: ['각자 만들어 맛보는 중', '기록 없이 자유롭게'],
+    plan: ['모둠 레시피 정하는 중', `시제품 ${r}`],
+    make: ['큰 컵에 만드는 중', `시제품 ${r} · 재료 ${Object.values(gd.rounds?.[r]?.checked || {}).filter(Boolean).length}/${ING.length}`],
+    rate: ['나눠 마시고 평가 중', `시제품 ${r} · ${done.length}/${present.length}명`],
+    decide: ['결과 보고 의논 중', `시제품 ${r} 결과`],
     done: ['개발 완료', gd.best ? `베스트: 시제품 ${gd.best}` : ''],
   };
   const [text, sub] = map[gd.step] || ['', ''];

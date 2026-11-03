@@ -3,7 +3,7 @@ import { whenAuth, isTeacherUser, teacherSignIn, pageUrl } from './fb.js';
 import { $, $$, esc, ING, gColor, loadNames, toast, ask, classLabel } from './util.js';
 import {
   DECK, stageIdx, watchClass, goSlide, setAbsent, unlock, drawGroups, confirmGroups, moveMember, setLeader,
-  markMade, setSommelier, closeSession, reopenSession, groupStatus,
+  markMade, setSommelier, closeSession, reopenSession, groupStatus, setTimer, addTimer,
 } from './teacher.js';
 
 const main = $('#main');
@@ -32,7 +32,16 @@ async function start() {
       try {
         const v = await teacherSignIn();
         if (!(await isTeacherUser(v))) return toast('교사 계정이 아니에요.');
-        start();
+        // 카운트다운 숫자만 1초마다 갱신
+setInterval(() => {
+  const el = document.getElementById('tleft');
+  const end = S?.sess?.timer?.end;
+  if (!el || !end) return;
+  const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+  el.textContent = left ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : '시간 끝';
+}, 1000);
+
+start();
       } catch (e) { console.error(e); toast('로그인하지 못했어요.'); }
     });
     return;
@@ -108,10 +117,17 @@ function tabGo() {
     const locked = stageIdx(d.stage) > stageIdx(S.sess.stage) && i !== idx + 1;
     return `<button class="${i === idx ? 'cur' : ''}" data-slide="${i}" ${locked ? 'disabled style="opacity:.45"' : ''}>${i + 1}. ${d.title}</button>`;
   }).join('');
+  const tm = S.sess.timer?.end;
+  const left = tm ? Math.max(0, Math.ceil((tm - Date.now()) / 1000)) : 0;
+  const timer = `<div class="sec"><h3>카운트다운 <span class="mute" style="font-weight:600">(TV 오른쪽 위)</span></h3>
+    ${tm ? `<p style="font-weight:800;margin-bottom:6px"><span class="num" id="tleft">${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span> 남음</p>` : '<p class="mute" style="margin-bottom:6px">꺼져 있어요</p>'}
+    <div class="tbtns">${[3, 5, 7, 10].map((m) => `<button class="btn sm ghost" data-timer="${m * 60}">${m}분</button>`).join('')}
+      ${tm ? '<button class="btn sm ghost" data-tadd="60">+1분</button><button class="btn sm ink" data-timer="0">끄기</button>' : ''}</div></div>`;
   return `<div class="now"><p class="mute" style="font-weight:700">지금 TV · ${idx + 1} / ${DECK.length}</p><p class="t">${cur.title}</p>
       ${DECK[idx + 1] ? `<p class="mute" style="margin-top:4px">다음: ${DECK[idx + 1].title}</p>` : ''}</div>
     <div class="nav"><button class="btn ghost" data-nav="-1">‹ 이전</button><button class="btn" data-nav="1">다음 ›</button></div>
     ${ctx}
+    ${timer}
     <div class="sec"><h3>슬라이드 바로 가기</h3><div class="slist">${list}</div>
     <p class="mute" style="font-size:.85rem">아직 오지 않은 단계는 '다음'으로 차례대로 넘어가요.</p></div>`;
 }
@@ -128,8 +144,8 @@ function tabAtt() {
       <button class="btn sm ${ab.has(s) ? 'ink' : 'ghost'}" data-absent="${s}">${ab.has(s) ? '결석 ✓' : '결석'}</button></div>`).join('') || '<p class="mute">모두 접속했어요.</p>'}
     <h3>접속 ${on.length}명</h3>
     ${on.map((s) => `<div class="row on"><span><span class="dot on"></span><span class="num">${s}</span>${nm(s)}</span>
-      <button class="btn sm ghost" data-unlock="${s}">잠금 풀기</button></div>`).join('')}
-    <p class="mute" style="font-size:.85rem;margin-top:8px">잠금 풀기: 학생이 다른 기기로 바꿔야 할 때 씁니다. 그 학번을 다시 고를 수 있게 돼요.</p></div>`;
+      <button class="btn sm ghost" data-unlock="${s}">접속 해제</button></div>`).join('')}
+    <p class="mute" style="font-size:.85rem;margin-top:8px">학생이 다른 기기에서 같은 학번을 고르면 그 기기로 저절로 옮겨져요. 접속 해제는 학번을 잘못 골랐을 때만 쓰세요.</p></div>`;
 }
 
 // ---------- 모둠 ----------
@@ -184,7 +200,7 @@ function tabTaste() {
     <p class="mute" style="margin-bottom:8px">어느 모둠 컵인지는 선생님에게도 보이지 않아요. 재료별 보기로 같은 주사기를 이어서 쓰면 빨라요.</p>
     <div class="seg"><button data-mode="cup" class="${tasteMode === 'cup' ? 'on' : ''}">컵별</button><button data-mode="ing" class="${tasteMode === 'ing' ? 'on' : ''}">재료별</button></div>
     ${body}
-    <h3>소믈리에 (${t.phase === 'prep' ? '모둠장이 정해요' : '시음 중'})</h3>
+    <h3>소믈리에 (${t.phase === 'prep' ? '모둠장이 패드에서 정해요' : '시음 중'})</h3>
     <p class="mute" style="margin-bottom:8px;font-size:.85rem">모둠장이 못 정했을 때만 여기서 고르세요.</p>${somm}</div>`;
 }
 
@@ -205,8 +221,8 @@ function bind() {
     setAbsent(S, s, !(S.sess.absent || []).includes(s)).catch((e) => toast(e.message));
   }));
   $$('[data-unlock]').forEach((b) => b.addEventListener('click', async () => {
-    if (!(await ask(`${b.dataset.unlock} 기기 잠금을 풀까요?`, { ok: '풀기' }))) return;
-    unlock(S, b.dataset.unlock).then(() => toast('잠금을 풀었어요.')).catch((e) => toast(e.message));
+    if (!(await ask(`${b.dataset.unlock} 접속을 해제할까요?`, { ok: '해제' }))) return;
+    unlock(S, b.dataset.unlock).then(() => toast('접속을 해제했어요.')).catch((e) => toast(e.message));
   }));
   $$('[data-act]').forEach((b) => b.addEventListener('click', async () => {
     const a = b.dataset.act;
@@ -229,6 +245,8 @@ function bind() {
     moveMember(S, sel.dataset.move, sel.value);
     sel.blur();
   }));
+  $$('[data-timer]').forEach((b) => b.addEventListener('click', () => setTimer(S, Number(b.dataset.timer)).catch((e) => toast(e.message))));
+  $$('[data-tadd]').forEach((b) => b.addEventListener('click', () => addTimer(S, Number(b.dataset.tadd)).catch((e) => toast(e.message))));
   $$('[data-made]').forEach((b) => b.addEventListener('click', () => markMade(S, b.dataset.made, !S.blind.made?.[b.dataset.made])));
   $$('[data-mode]').forEach((b) => b.addEventListener('click', () => { tasteMode = b.dataset.mode; render(); }));
   $$('[data-somm]').forEach((sel) => sel.addEventListener('change', () => {
@@ -236,5 +254,14 @@ function bind() {
     sel.blur();
   }));
 }
+
+// 카운트다운 숫자만 1초마다 갱신
+setInterval(() => {
+  const el = document.getElementById('tleft');
+  const end = S?.sess?.timer?.end;
+  if (!el || !end) return;
+  const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+  el.textContent = left ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : '시간 끝';
+}, 1000);
 
 start();

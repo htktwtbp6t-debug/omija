@@ -77,7 +77,7 @@ button.eqb{display:contents}
 @media (max-width:380px){.ing .v{font-size:1.25em}.stepper button{width:2em;height:2em}}
 
 /* 단계 막대 */
-.stepbar{display:grid;grid-template-columns:repeat(5,1fr);gap:.35em;font-size:.82rem}
+.stepbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:.3em;font-size:.78rem;margin-bottom:6px}
 .stepbar div{border:var(--bd);border-radius:99px;text-align:center;font-weight:700;background:#fff;padding:.32em 0}
 .stepbar .done{background:var(--dim);color:#8a8279}
 .stepbar .now{background:var(--g2);box-shadow:3px 3px 0 var(--ink)}
@@ -167,3 +167,46 @@ textarea.in{width:100%;border:var(--bd);border-radius:12px;padding:10px 12px;min
   .app.wide .plan-wrap .cyl{width:110px;height:330px}
   .app.wide .split{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
 }
+.tbtns{display:flex;flex-wrap:wrap;gap:6px}
+
+/* 11/3 학번 옮기기·내 모둠·준비물·단계 안내 */
+.picker button.taken{border-style:dashed;background:#F1ECE4;box-shadow:none;color:#6E675F}
+.mygroup{display:flex;align-items:center;gap:16px;border:var(--bd);border-radius:18px;background:var(--c);box-shadow:var(--sh);padding:16px;margin:4px 0 14px}
+.mygroup .bigchip{width:92px;height:92px;font-size:52px;background:#fff;box-shadow:none}
+.mygroup .big{font-family:var(--disp);font-size:2rem;line-height:1.2}
+.mygroup .go{font-weight:800;margin-top:6px;font-size:1.05rem}
+.illo{display:block;width:100%;height:auto}
+.illo.sm{max-height:84px;width:auto;max-width:100%;margin:2px auto 4px}
+.sups{display:grid;gap:8px;margin-bottom:6px}
+.sups .sp{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:10px;border:var(--bd);border-radius:12px;background:#fff;padding:6px 12px 6px 6px;text-align:left;width:100%}
+.sups .sp .illo{width:52px}
+.sups .sp b{display:block;font-weight:800;font-size:1.05rem}
+.sups .sp b .hl{padding:0 .25em;font-family:var(--num)}
+.sups .sp small{display:block;color:var(--mute);font-weight:600;font-size:.85rem;line-height:1.35}
+.sups:not(.ck) .sp{grid-template-columns:52px 1fr}
+.sups .box-ck{width:2em;height:2em;border:var(--bd);border-radius:.3em;display:grid;place-items:center;font-style:normal;font-weight:900;background:#fff}
+.sups .sp.on{background:#E3F7EE;box-shadow:3px 3px 0 var(--ink)}
+.sups .sp.on .box-ck{background:var(--g3)}
+.sups .sp.on .box-ck::after{content:"✓"}
+.guide{display:grid;grid-template-columns:1fr;gap:6px;border:var(--bd);border-radius:14px;background:#fff;padding:10px 14px 12px;margin:6px 0 12px}
+.guide .illo{max-height:96px;width:auto;max-width:100%;justify-self:center}
+.guide b{font-weight:900}
+.guide ol{padding-left:1.3em;display:grid;gap:3px;font-weight:600;margin-top:4px;line-height:1.45}
+.guide ol b{background:#FFF0B8;font-weight:800}
+.batch{display:flex;justify-content:space-between;align-items:center;gap:10px;border:var(--bd);border-radius:12px;background:var(--g2);padding:8px 12px;margin-bottom:10px;font-weight:700}
+.batch .num{font-size:1.2rem}
+.stepper.sm button{width:2em;height:2em}
+.ing.mk2{grid-template-columns:auto 1fr auto auto;min-height:3.6em}
+.ing .per{display:block;font-size:.78em;color:var(--mute);font-weight:700}
+.ing .put{display:flex;align-items:baseline;gap:.25em}
+.ing .put small{font-size:.72em;color:var(--mute);font-weight:700}
+.ing .put b{font-size:1.9em;line-height:1}
+.ing .ckv{width:1.6em;text-align:center;font-weight:900;color:#1d9a6c;font-size:1.3em}
+.fix{margin:8px 0 2px;border:2px dashed var(--ink);border-radius:12px;padding:6px 10px;background:#fff}
+.fix summary{font-weight:800;cursor:pointer;font-size:.92rem}
+.fix .ing{margin-top:6px}
+.tips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;font-size:.86rem;font-weight:700}
+.tips b{width:100%;font-weight:900}
+.tips span{border:2px solid var(--ink);border-radius:99px;padding:2px 10px;background:#fff}
+.prev{border:var(--bd);border-radius:12px;background:#fff;padding:10px 12px;margin-bottom:6px}
+.prev>b{display:inline-block;margin-bottom:6px}

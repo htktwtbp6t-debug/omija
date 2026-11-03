@@ -5,7 +5,7 @@ import {
   GoogleAuthProvider, signOut, connectAuthEmulator,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, connectFirestoreEmulator,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 export * from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
@@ -34,8 +34,13 @@ export const EMU = local && localStorage.getItem('omija-emu') === '1';
 
 export const app = initializeApp(EMU ? { ...firebaseConfig, projectId: 'demo-omija' } : firebaseConfig);
 export const auth = getAuth(app);
+// 11/3 접속 실패 대책
+// - 학교 와이파이·프록시가 실시간 스트리밍 연결을 끊는 경우가 있어 롱 폴링으로 고정한다
+// - 학생 기기(카카오톡 등 인앱 브라우저 포함)는 디스크 캐시 대신 메모리 캐시: 옛 캐시 때문에 '수업 없음'이 뜨는 일을 막는다
+const STUDENT_PAGE = !/(show|remote|admin)\.html$/.test(location.pathname);
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  localCache: STUDENT_PAGE ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  experimentalForceLongPolling: true,
 });
 if (EMU) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
