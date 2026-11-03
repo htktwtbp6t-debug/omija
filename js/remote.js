@@ -2,7 +2,7 @@
 import { whenAuth, isTeacherUser, teacherSignIn, pageUrl } from './fb.js';
 import { $, $$, esc, ING, gColor, loadNames, toast, ask, classLabel } from './util.js';
 import {
-  DECK, stageIdx, watchClass, goSlide, setAbsent, unlock, drawGroups, confirmGroups, moveMember, setLeader,
+  DECK, stageIdx, watchClass, goSlide, stepSlide, setPop, otherResults, setCompare, hashKey, setAbsent, unlock, drawGroups, confirmGroups, moveMember, setLeader,
   markMade, setSommelier, closeSession, reopenSession, groupStatus, setTimer, addTimer,
 } from './teacher.js';
 
@@ -14,6 +14,7 @@ let S = null;
 let tab = 'go';
 let lastStage = null;
 let tasteMode = 'cup';
+let others = null; // 다른 반 베스트 후보 (리모컨에서 처음 열 때 한 번 불러옴)
 
 const STAGE_NAME = { intro: '도입', join: '접속', grouping: '모둠 배치', brief: '개발 안내', develop: '시제품 개발', tasting: '시음회', reveal: '결과 공개', wrap: '정리' };
 const STAGE_TAB = { intro: 'go', join: 'att', grouping: 'grp', brief: 'go', develop: 'go', tasting: 'taste', reveal: 'go', wrap: 'end' };
@@ -89,7 +90,7 @@ function render(force = false) {
   const head = `<div class="rm-head"><b>${classLabel(S.sess.classId)}</b>
     <span class="pill">${S.sess.open ? STAGE_NAME[S.sess.stage] : '닫힌 수업'}</span></div>
     ${tab === 'go' ? '' : `<div class="mini"><button data-nav="-1" aria-label="이전">‹</button>
-      <span><b class="num">${idx + 1}/${DECK.length}</b> ${DECK[idx].title}</span><button data-nav="1" class="nx">다음 ›</button></div>`}`;
+      <span><b class="num">${idx + 1}/${DECK.length}</b> ${DECK[idx].title}${subTxt(DECK[idx])}</span><button data-nav="1" class="nx">다음 ›</button></div>`}`;
   main.innerHTML = head + ({ go: tabGo, att: tabAtt, grp: tabGrp, taste: tabTaste, end: tabEnd }[tab])();
   bind();
 }
@@ -98,6 +99,11 @@ async function go(i) {
   const r = await goSlide(S, i, (m) => ask(m, { ok: '네' }));
   if (r?.error) toast(r.error);
 }
+async function step(d) {
+  const r = await stepSlide(S, d, (m) => ask(m, { ok: '네' }));
+  if (r?.error) toast(r.error);
+}
+const subTxt = (d) => (d.steps ? ` <span class="pill light">${S.sess.sub || d.steps}/${d.steps}</span>` : '');
 
 // ---------- 진행 ----------
 function tabGo() {
@@ -123,13 +129,30 @@ function tabGo() {
     ${tm ? `<p style="font-weight:800;margin-bottom:6px"><span class="num" id="tleft">${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span> 남음</p>` : '<p class="mute" style="margin-bottom:6px">꺼져 있어요</p>'}
     <div class="tbtns">${[3, 5, 7, 10].map((m) => `<button class="btn sm ghost" data-timer="${m * 60}">${m}분</button>`).join('')}
       ${tm ? '<button class="btn sm ghost" data-tadd="60">+1분</button><button class="btn sm ink" data-timer="0">끄기</button>' : ''}</div></div>`;
-  return `<div class="now"><p class="mute" style="font-weight:700">지금 TV · ${idx + 1} / ${DECK.length}</p><p class="t">${cur.title}</p>
-      ${DECK[idx + 1] ? `<p class="mute" style="margin-top:4px">다음: ${DECK[idx + 1].title}</p>` : ''}</div>
+  const sub = S.sess.sub || cur.steps;
+  const nextTxt = cur.steps && sub < cur.steps ? `다음: 항목 하나 더 보이기 (${sub}/${cur.steps})` : DECK[idx + 1] ? `다음: ${DECK[idx + 1].title}` : '';
+  const pops = cur.pops ? `<div class="pops">${cur.pops.map(([k, n]) => `<button class="btn ${S.sess.pop === k ? 'ink' : 'ghost'}" data-pop="${k}">${S.sess.pop === k ? `${n} 닫기` : `TV에 띄우기: ${n}`}</button>`).join('')}</div>` : '';
+  return `<div class="now"><p class="mute" style="font-weight:700">지금 TV · ${idx + 1} / ${DECK.length}</p><p class="t">${cur.title}${subTxt(cur)}</p>
+      ${nextTxt ? `<p class="mute" style="margin-top:4px">${nextTxt}</p>` : ''}</div>
     <div class="nav"><button class="btn ghost" data-nav="-1">‹ 이전</button><button class="btn" data-nav="1">다음 ›</button></div>
+    ${pops}${cur.id === 'result' ? compareSec() : ''}
     ${ctx}
     ${timer}
     <div class="sec"><h3>슬라이드 바로 가기</h3><div class="slist">${list}</div>
     <p class="mute" style="font-size:.85rem">아직 오지 않은 단계는 '다음'으로 차례대로 넘어가요.</p></div>`;
+}
+
+// 다른 반 베스트: 고른 반만 TV 팝업에 나온다
+function compareSec() {
+  if (!others) {
+    others = 'loading';
+    otherResults(S).then((v) => { others = v; render(); }).catch((e) => { console.error(e); others = []; render(); });
+  }
+  if (others === 'loading') return '<div class="sec"><h3>다른 반 베스트</h3><p class="mute">불러오는 중…</p></div>';
+  const on = new Set((S.sess.compare || []).map((x) => x.id));
+  return `<div class="sec"><h3>다른 반 베스트 <span class="mute" style="font-weight:600">(고른 반만 TV에)</span></h3>
+    ${others.map((x) => `<label class="row ${on.has(hashKey(x.key)) ? 'on' : ''}"><span><input type="checkbox" data-cmp="${esc(x.key)}" ${on.has(hashKey(x.key)) ? 'checked' : ''}>
+      ${esc(x.cls)} <span class="mute">${esc(x.date)} · ${x.g}모둠 · ${x.score ?? '–'}점</span></span></label>`).join('') || '<p class="mute">결과가 나온 다른 반이 아직 없어요.</p>'}</div>`;
 }
 
 // ---------- 출석 ----------
@@ -214,7 +237,14 @@ function tabEnd() {
 }
 
 function bind() {
-  $$('[data-nav]').forEach((b) => b.addEventListener('click', () => go((S.sess.slide || 0) + Number(b.dataset.nav))));
+  $$('[data-nav]').forEach((b) => b.addEventListener('click', () => step(Number(b.dataset.nav))));
+  $$('[data-pop]').forEach((b) => b.addEventListener('click', () => setPop(S, b.dataset.pop).catch((e) => toast(e.message))));
+  $$('[data-cmp]').forEach((c) => c.addEventListener('change', () => {
+    const keys = new Set((S.sess.compare || []).map((x) => x.id));
+    const id = hashKey(c.dataset.cmp);
+    if (c.checked) keys.add(id); else keys.delete(id);
+    setCompare(S, others.filter((x) => keys.has(hashKey(x.key)))).catch((e) => toast(e.message));
+  }));
   $$('[data-slide]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.slide))));
   $$('[data-absent]').forEach((b) => b.addEventListener('click', () => {
     const s = b.dataset.absent;

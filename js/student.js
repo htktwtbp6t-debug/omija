@@ -4,7 +4,7 @@ import {
 } from './fb.js';
 import {
   $, esc, ING, Q, TOTAL, MAX_ROUNDS, BASE_ROUNDS, SUPPLIES, gColor, emptyRecipe, sumRecipe, recipeOf, cylinder, illo,
-  seededShuffle, fmt1, toast, ask, debounce,
+  seededShuffle, fmt1, toast, ask, debounce, slideIdx,
 } from './util.js';
 
 const main = $('#main');
@@ -262,6 +262,18 @@ function supplyList(n) {
 
 function renderMyGroup() {
   const L = isLeader();
+  const showSup = st.sess.groupsConfirmed && (st.sess.slide || 0) >= slideIdx('supplies');
+  if (showSup) {
+    // 준비물 슬라이드부터: 모둠 표시는 한 줄로 줄이고 준비물을 먼저
+    view(`${topBar()}
+      <div class="gline" style="--c:${gColor(st.g)}"><span class="gchip">${st.g}</span><b>${st.g}모둠</b><span>모둠장 <span class="num">${esc(leader() || '–')}</span>${L ? ' (나)' : ''}</span></div>
+      ${supplyBlock(L)}
+      <p class="hint" style="margin-top:12px">우리 모둠: ${members().map((m) => `<span class="num">${esc(m)}</span>`).join(' · ')}</p>
+      ${changeBtn()}`, 'mygroup');
+    bindChange();
+    bindSup(renderMyGroup);
+    return;
+  }
   const list = members().map((m) => `<div class="m"><span class="num">${esc(m)}${m === st.stu ? ' (나)' : ''}</span>${m === leader() ? '<span class="pill">모둠장</span>' : ''}</div>`).join('');
   view(`${topBar()}
     <div class="mygroup" style="--c:${gColor(st.g)}">
@@ -273,6 +285,33 @@ function renderMyGroup() {
     ${L ? `<div class="note y" style="margin-top:14px">모둠장은 이 화면으로 모둠을 이끌어요. 개발이 시작되면 <b>준비물 체크 → 각자 맛보기 → 레시피 정하기</b> 순서로 화면이 안내해요.</div>` : '<p class="hint" style="margin-top:14px">TV와 모둠장 화면의 안내를 따라와요.</p>'}
     ${changeBtn()}`, 'mygroup');
   bindChange();
+}
+
+// 준비물 체크 표시는 모둠장 기기에만 저장 (개발 첫 단계 '준비'와 같은 칸을 씀)
+const supKey = () => `omija-sup-${sid}-${st.g}`;
+function supChecks() {
+  try { return JSON.parse(localStorage.getItem(supKey()) || '{}'); } catch { return {}; }
+}
+function bindSup(again) {
+  main.querySelectorAll('[data-sup]').forEach((b) => b.addEventListener('click', () => {
+    const ck = supChecks();
+    ck[b.dataset.sup] = !ck[b.dataset.sup];
+    try { localStorage.setItem(supKey(), JSON.stringify(ck)); } catch { /* 무시 */ }
+    again();
+  }));
+}
+// 준비물 슬라이드부터: 모둠원은 목록만, 모둠장은 눌러서 체크
+function supplyBlock(L) {
+  const n = present().length;
+  if (!L) {
+    return `<h2 class="suph">준비물 <span class="hl">챙기기</span></h2>
+      <p class="hint">모둠장과 나눠서 앞에서 받아 와요. <b>체크는 모둠장이 해요.</b></p>${supplyList(n)}`;
+  }
+  const ck = supChecks();
+  const sups = SUPPLIES(n);
+  const left = sups.filter((x) => !ck[x.k]).length;
+  return `<h2 class="suph">준비물 <span class="hl">체크</span></h2><div class="ckcall ${left ? '' : 'ok'}">${left ? `모둠장! 챙긴 준비물을 <b>눌러서 체크</b>해요 <span class="num">${left}개 남음</span>` : '준비물 체크 끝! ✓'}</div>
+    <div class="sups ck">${sups.map((x) => `<button class="sp ${ck[x.k] ? 'on' : ''}" data-sup="${x.k}">${illo([`${x.ic}::`])}<span><b>${x.name} <span class="hl">${x.qty}</span></b><small>${x.note}</small></span><i class="box-ck"></i></button>`).join('')}</div>`;
 }
 
 // ---------- ② 개발 ----------
@@ -320,26 +359,21 @@ function renderDevelop() {
 // 준비물 체크 (모둠장). 체크 표시는 이 기기에만 저장
 function prepView(head, L) {
   const n = present().length;
-  const key = `omija-sup-${sid}-${st.g}`;
-  let ck = {};
-  try { ck = JSON.parse(localStorage.getItem(key) || '{}'); } catch { /* 무시 */ }
+  const ck = supChecks();
   const sups = SUPPLIES(n);
   const all = sups.every((x) => ck[x.k]);
   if (!L) {
     view(`${head}<h2>준비물 <span class="hl">챙기기</span></h2>
-      <p class="hint">모둠장과 같이 앞에서 받아 와요. 재료 4가지는 플라스틱 컵에 담아 와요.</p>${supplyList(n)}`, 'mprep');
+      <p class="hint">모둠장과 같이 앞에서 받아 와요. 재료 4가지는 플라스틱 컵에 담아 와요. <b>체크는 모둠장이 해요.</b></p>${supplyList(n)}`, 'mprep');
     return;
   }
   view(`${head}<h2>준비물 <span class="hl">체크</span></h2>
-    <p class="hint">모둠원과 나눠서 앞에서 받아 오고, 챙긴 것을 눌러 체크해요. 우리 모둠 ${n}명.</p>
+    <p class="hint">모둠원과 나눠서 앞에서 받아 와요. 우리 모둠 ${n}명.</p>
+    <div class="ckcall ${all ? 'ok' : ''}">${all ? '준비물 체크 끝! ✓' : `모둠장! 챙긴 준비물을 <b>눌러서 체크</b>해요 <span class="num">${sups.filter((x) => !ck[x.k]).length}개 남음</span>`}</div>
     <div class="sups ck">${sups.map((x) => `<button class="sp ${ck[x.k] ? 'on' : ''}" data-sup="${x.k}">${illo([`${x.ic}::`])}<span><b>${x.name} <span class="hl">${x.qty}</span></b><small>${x.note}</small></span><i class="box-ck"></i></button>`).join('')}</div>
-    <div class="note" style="margin:10px 0">재료 컵 4개(오미자·배즙·설탕 시럽·정수)에 재료를 받고, <b>큰 컵 하나는 비워 둬요</b>.</div>
+    <div class="note" style="margin:10px 0">재료 컵 4개(오미자·배즙·알룰로스 시럽·정수)에 재료를 받고, <b>큰 컵 하나는 비워 둬요</b>.</div>
     <div class="foot"><button class="btn block" id="go" ${all ? '' : 'disabled'}>${all ? '준비 완료 → 각자 맛보기 시작' : '모두 체크하면 시작할 수 있어요'}</button></div>`, 'prep');
-  main.querySelectorAll('[data-sup]').forEach((b) => b.addEventListener('click', () => {
-    ck[b.dataset.sup] = !ck[b.dataset.sup];
-    try { localStorage.setItem(key, JSON.stringify(ck)); } catch { /* 무시 */ }
-    renderDevelop();
-  }));
+  bindSup(renderDevelop);
   $('#go').addEventListener('click', () => gUpdate({ step: 'free' }));
 }
 
@@ -362,7 +396,7 @@ function freeView(head, L) {
 }
 
 // 레시피 고칠 때 참고 (2번째부터)
-const TIPS = '<div class="tips"><b>고치는 팁</b><span>너무 시다 → 오미자 ↓ 또는 시럽·배즙 ↑</span><span>너무 달다 → 시럽 ↓ 또는 정수 ↑</span><span>맛이 진하다 → 정수 ↑</span><span>밍밍하다 → 정수 ↓</span></div>';
+const TIPS = '<div class="tips"><b>고치는 팁</b><span>너무 시다 → 오미자 ↓ 또는 알룰로스·배즙 ↑</span><span>너무 달다 → 알룰로스 ↓ 또는 정수 ↑</span><span>맛이 진하다 → 정수 ↑</span><span>밍밍하다 → 정수 ↓</span></div>';
 
 const groupRef = () => doc(db, 'sessions', sid, 'groups', st.g);
 async function gUpdate(data) {

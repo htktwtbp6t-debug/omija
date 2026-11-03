@@ -2,7 +2,7 @@
 import { whenAuth, isTeacherUser, teacherSignIn, pageUrl } from './fb.js';
 import { $, esc, ING, MAX_ROUNDS, BASE_ROUNDS, SUPPLIES, gColor, cylinder, qrSvg, illo, loadNames, fmt1, toast, ask, classLabel } from './util.js';
 import {
-  DECK, watchClass, goSlide, drawGroups, confirmGroups, moveMember, setLeader, groupStatus,
+  DECK, watchClass, stepSlide, setPop, drawGroups, confirmGroups, moveMember, setLeader, groupStatus,
 } from './teacher.js';
 
 const stage = $('#stage');
@@ -67,6 +67,9 @@ function render() {
   const sl = DECK[idx];
   let html = (R[sl.id] || (() => ''))();
   html += `<div class="pager">${idx + 1} / ${DECK.length}</div>`;
+  const pop = S.sess.pop && sl.pops?.some(([k]) => k === S.sess.pop) ? S.sess.pop : null;
+  if (pop) html += `<div class="pop" data-pop="${pop}"><div class="pin">${POP[pop]()}</div></div>`;
+  else if (sl.pops) html += `<div class="popbtns">${sl.pops.map(([k, n]) => `<button class="sbtn" data-popk="${k}">${n}</button>`).join('')}</div>`;
   if (sl.id !== curId) {
     curId = sl.id;
     lastHtml = '';
@@ -83,6 +86,8 @@ function render() {
     el.innerHTML = html;
   }
   AFTER[sl.id]?.(fresh);
+  stage.querySelectorAll('[data-popk]').forEach((b) => b.addEventListener('click', () => setPop(S, b.dataset.popk)));
+  stage.querySelector('.pop')?.addEventListener('click', () => setPop(S, S.sess.pop));
 }
 
 const today = () => {
@@ -97,33 +102,28 @@ R.hook = () => `<div class="l">
     <span class="pill" style="align-self:flex-start">과탐실2 · ${cls()} · ${today()}</span>
     <h1>‘맛있다’를 <span class="r">숫자</span>로<br>말할 수 있을까?<br><span class="box2">오늘은 레시피 찾기</span></h1>
     <p class="q"><b>우리 동네 특산품</b> 오미자로 음료를 만들고,<br>맛있는 음료가 어떤지 <b>데이터</b>로 남겨 보자.</p>
-    <div class="loop"><span class="k">오늘 · 레시피 찾기</span><em>→</em><span>다음 · 당도·산도 정량 분석</span><em>→</em><span>맛있는 음료의 데이터</span></div>
+    <div class="loop"><span class="k">오늘 · 레시피 찾기</span><em>→</em><span>맛을 점수로 기록</span><em>→</em><span>맛있는 음료의 데이터</span></div>
   </div>
   <div class="rc">${cylinder({ omija: 7, pear: 5, syrup: 4, water: 4 })}<div class="badge">오미자<small>다섯 가지 맛</small></div></div>
   <div class="marq"><div>${'<span>안전</span><span class="s">✦</span><span>손 씻기</span><span class="s">✦</span><span>정직한 기록</span><span class="s">✦</span><span>먹었으면 평가</span><span class="s">✦</span><span>협력</span><span class="s">✦</span>'.repeat(2)}</div></div>`;
 
-R.process = () => `<div class="hd"><h2>탐구의 <span class="r">큰 그림</span></h2><span class="pill">오늘은 1단계</span></div>
+R.process = () => `<div class="hd"><h2>탐구의 <span class="r">큰 그림</span></h2><span class="pill">오늘 할 탐구</span></div>
   <div class="road">
-    <div class="box now"><span class="tag">오늘 · 1차시</span><b>맛있는 레시피 찾기</b><p>사람의 감각으로 평가 (관능평가)</p>
+    <div class="box now"><span class="tag">오늘</span><b>맛있는 레시피 찾기</b><p>사람의 감각으로 평가 (관능평가)</p>
       <div class="mini"><span>만들기</span><em>→</em><span>맛 평가</span><em>→</em><span>고치기</span><em>↺ 2~3번</em></div>
       <div class="mini"><span>반 대표 블라인드 시음회</span></div></div>
     <em>→</em>
-    <div class="box"><span class="tag">다음 · 2차시</span><b>정량 분석</b><p>측정값으로 평가</p>
-      <div class="mini"><span>단맛 → 굴절당도계 (°Brix)</span></div><div class="mini"><span>신맛 → 산·염기 적정 (NaOH)</span></div></div>
+    <div class="box"><span class="tag">기록</span><b>데이터로 남기기</b><p>느낌을 말로만 하지 않고</p>
+      <div class="mini"><span>레시피 → mL 숫자</span></div><div class="mini"><span>맛 → 1~5점</span></div><div class="mini"><span>모둠·반 평균</span></div></div>
     <em>→</em>
-    <div class="box end"><b>맛있는 음료의<br>데이터</b><p>얼마나 달고<br>얼마나 실까?</p></div>
+    <div class="box end"><b>맛있는 음료의<br>데이터</b><p>가능한 한<br>객관적으로!</p></div>
   </div>
-  <p class="lead" style="text-align:center;margin-top:3cqi">분석하려면 먼저 <b>‘맛있는 음료’</b>라는 시료가 있어야겠죠? 오늘은 <b class="r">그 레시피를 찾는 날</b>이에요.</p>`;
+  <p class="lead" style="text-align:center;margin-top:3cqi">‘맛있다’는 느낌을 <b>가능한 한 객관적인 자료</b>로 남겨 보자. 오늘은 <b class="r">그 레시피를 찾는 날</b>이에요.</p>`;
 
-R.omija = () => `<div class="hd"><h2>우리 동네 특산품 <span class="r">오미자</span>로<br>음료를 만들어 보자</h2></div>
-  <p class="lead">오미자(五味子)는 다섯 가지 맛이 난다는 열매예요.</p>
-  <div class="tastes5"><span style="background:var(--g2)">단맛</span><span style="background:var(--g3)">신맛</span><span>쓴맛</span><span>짠맛</span><span style="background:var(--g1);color:#fff">매운맛</span></div>
-  <div class="goal">
-    <div class="box"><b>오늘의 목표</b>만들고 → 평가하고 → 고쳐서<br>우리 반이 고른 <span class="hl">가장 맛있는 레시피</span>를 찾는다.</div>
-    <div class="box" style="background:#ECE5FF"><b>다음 차시</b>그 레시피의 <span class="hl">당도와 산도</span>를<br>측정해 데이터로 남긴다.</div>
-  </div>`;
-
-R.promise = () => `<div class="hd"><h2>오늘의 약속</h2></div>
+R.promise = () => `<div class="hd"><h2>우리 동네 특산품 <span class="r">오미자</span>로 음료를 만들어 보자</h2></div>
+  <div class="omi"><p class="lead">오미자(五味子) = <b>다섯 가지 맛</b>이 난다는 열매</p>
+    <div class="tastes5"><span style="background:var(--g2)">단맛</span><span style="background:var(--g3)">신맛</span><span>쓴맛</span><span>짠맛</span><span style="background:var(--g1);color:#fff">매운맛</span></div></div>
+  <h3 class="sub">오늘의 약속</h3>
   <div class="promise">
     <div class="box"><div class="ic">🧤</div><b>안전</b><p>실험 도구는 정해진 용도로만.<br>맛보기 전에 손 씻기.</p></div>
     <div class="box" style="background:#FFF4D6"><div class="ic">📏</div><b>정직한 기록</b><p>넣은 양 그대로 입력.<br>내 입맛대로 솔직하게 평가.</p></div>
@@ -173,20 +173,25 @@ R.group = () => {
 
 R.supplies = () => `<div class="hd"><h2>모둠별 <span class="r">준비물</span> 챙기기</h2><span class="pill">모둠장 화면에서 체크!</span></div>
   <div class="sup">${SUPPLIES().map((x) => `<div class="box">${illo([`${x.ic}::`])}<b>${x.name}</b><span class="q">${x.qty}</span><p>${x.note}</p></div>`).join('')}</div>
-  <div class="suprow"><div class="box">${illo(['cup:#D9264A:오미자', 'cup:#C8DC8A:배즙', 'cup:#F4E7C6:설탕 시럽', 'cup:#9CD2EA:정수', 'big:#ffffff:제작용(빈 컵)'])}</div>
+  <div class="suprow"><div class="box">${illo(['cup:#D9264A:오미자', 'cup:#C8DC8A:배즙', 'cup:#F4E7C6:알룰로스', 'cup:#9CD2EA:정수', 'big:#ffffff:제작용(빈 컵)'])}</div>
     <p class="lead">재료는 앞에서 <b>플라스틱 컵 4개</b>에 받아 가요.<br>큰 컵 하나는 <b>비워 두고</b> 모둠 음료를 만들 때 써요.</p></div>`;
 
-R.rules = () => `<div class="hd"><h2>재료와 <span class="r">규칙</span></h2><span class="pill">레시피 = 한 사람 몫 20 mL</span></div>
-  <div class="ings">${ING.map((i) => `<div class="box flat" style="--c:${i.color}"><span class="sw"></span>${i.name}</div>`).join('')}</div>
+// 다음을 누를 때마다 하나씩 (sess.sub = 보이는 항목 수)
+R.rules = () => {
+  const n = S.sess.sub || 7;
+  const c = (i) => (i <= n ? `rv ${i === n ? 'new' : ''}` : 'rv off');
+  const v = (i) => `class="${c(i)}"`;
+  return `<div class="hd"><h2>재료와 <span class="r">규칙</span></h2><span class="pill light">${n} / 7</span></div>
+  <div class="ings ${c(1)}">${ING.map((i) => `<div class="box flat" style="--c:${i.color}"><span class="sw"></span>${i.name}</div>`).join('')}</div>
   <div class="rules"><ul>
-      <li>레시피는 <b>한 사람 몫 20 mL</b> 기준, 1 mL 단위</li>
-      <li>큰 컵에는 <b>인원수만큼 곱해서</b> 만들어요 (화면이 계산해 줘요)</li>
-      <li>재료마다 <b>주사기를 따로</b> 써요</li>
-      <li>넣은 양이 다르면 <b>실제 값으로 고쳐요</b></li>
-      <li>시음 컵·커피스틱은 <b>한 사람에 하나</b></li>
+      <li ${v(2)}>레시피는 <b>한 사람 몫 20 mL</b> 기준, 1 mL 단위</li>
+      <li ${v(3)}>큰 컵에는 <b>인원수만큼 곱해서</b> 만들어요 (화면이 계산해 줘요)</li>
+      <li ${v(4)}>재료마다 <b>주사기를 따로</b> 써요</li>
+      <li ${v(5)}>넣은 양이 다르면 <b>실제 넣은 값으로 고쳐요</b></li>
     </ul>
-    <div><div class="shout" style="background:var(--g2)">모둠 레시피 ${BASE_ROUNDS}번<small>시간이 남으면 3번까지. 마지막에 최종안 하나를 골라요</small></div>
-      <div class="shout" style="background:var(--g5)">마셨으면 꼭 평가!<small>각자 폰에서 5문항. 평가해야 결과가 나와요</small></div></div></div>`;
+    <div><div class="shout ${c(6)}" style="background:var(--g2)">모둠 레시피 ${BASE_ROUNDS}번<small>시간이 남으면 3번까지. 마지막에 최종안 하나를 골라요</small></div>
+      <div class="shout ${c(7)}" style="background:var(--g5)">마셨으면 꼭 평가!<small>각자 폰에서 5문항. 평가해야 결과가 나와요</small></div></div></div>`;
+};
 
 R.steps = () => `<div class="hd"><h2>오늘 <span class="r">하는 방법</span></h2><span class="pill">모둠장 화면이 단계마다 알려 줘요</span></div>
   <div class="how">
@@ -293,23 +298,69 @@ R.result = () => {
     <table class="rtable"><thead><tr><th>모둠</th><th>베스트</th><th>레시피 (mL)</th><th>모둠 내<br>종합 맛</th><th>시음회</th><th>시제품별 종합 맛</th><th>선정 이유</th></tr></thead><tbody>${rows}</tbody></table>`;
 };
 
-R.measure = () => `<div class="hd"><h2>‘맛있다’를 <span class="r">객관적 지표</span>로</h2><span class="pill">다음 차시에 측정해요</span></div>
-  <div class="meas">
-    <div class="box subj"><span class="tag">오늘</span><b>관능평가</b><p>사람의 감각으로 1~5점<br>→ 사람마다, 컨디션마다 달라요<br>→ <b>주관적</b></p></div>
-    <em>→</em>
-    <div class="objs">
-      <div class="box"><b>당도 <span class="u">°Brix</span></b><p><b>굴절당도계</b>: 녹아 있는 당이 많을수록 빛이 더 꺾여요</p></div>
-      <div class="box"><b>산도 <span class="u">%</span></b><p><b>산·염기 적정</b>: NaOH로 중화해 유기산(구연산·사과산) 양을 구해요</p></div>
-      <div class="box hot"><b>당산비 <span class="u">= 당도 ÷ 산도</span></b><p>단맛과 신맛의 <b>균형</b>. 과일·주스 품질을 볼 때 쓰는 지표</p></div>
-      <div class="box"><b>pH · 색</b><p>pH 미터로 산의 세기, 붉은 색소(안토시아닌)는 pH에 따라 색이 변해요</p></div>
+// 질문 던지기: 맛있다고 느낀 레시피들 사이에 공통점이 있을까?
+R.measure = () => {
+  const res = S.sess.results;
+  const rows = groupKeys().map((g) => ({ g, ...(res?.groups?.[g] || {}) })).filter((x) => x.recipe)
+    .sort((a, b) => (b.tasting ?? -1) - (a.tasting ?? -1));
+  const cards = rows.map((x) => `<div class="mcard" style="--c:${gColor(x.g)}"><span class="gchip">${x.g}</span>${cylinder(x.recipe, 'cylm')}
+      <span class="sc">${fmt1(x.tasting)}<small>시음회</small></span>
+      <span class="rc">${ING.map((i) => `<i style="--c:${i.color}"></i>${i.short} <b>${x.recipe[i.k]}</b>`).join('<br>')}</span></div>`).join('');
+  return `<div class="hd"><h2>맛있는 레시피들, <span class="r">공통점</span>이 있을까?</h2><span class="pill">시음회 점수 높은 순</span></div>
+    <div class="mrow" style="grid-template-columns:repeat(${Math.max(rows.length, 1)},1fr)">${cards || '<p class="lead">결과가 아직 없어요.</p>'}</div>
+    <div class="qs">
+      <div class="box">🤔 점수가 높은 음료는 <b>오미자·알룰로스 양</b>이 비슷할까?</div>
+      <div class="box">😋 ‘달다’, ‘시다’는 <b>사람마다</b> 다르게 느끼는데…</div>
     </div>
-  </div>
-  <div class="ask">🔍 탐구 질문: <b>우리 반 최우수 레시피의 당산비는?</b> 종합 맛 점수가 높은 음료는 당산비도 비슷할까?</div>`;
+    <div class="ask">🔍 <b>정말 객관적으로</b> 맛을 나타내는 방법은 없을까?</div>`;
+};
 
-R.wrap = () => `<div class="wrap-s"><div>
-    <span class="pill">다음 차시</span>
-    <h1 style="margin-top:2cqi">오늘 찾은 레시피,<br><span class="r">얼마나 달고</span><br><span class="r">얼마나 신지</span><br>숫자로 재 보자</h1></div>
-    <div class="todo"><span>🧪 남은 시료는 폐기</span><span>🧽 주사기·컵 씻어 정리</span><span>🧻 책상 닦기</span><span>👋 수고했어요!</span></div></div>`;
+// 답: pH와 °Brix (다음 차시에 측정) + 마무리
+R.wrap = () => `<div class="hd"><h2>더 <span class="r">객관적</span>으로: pH와 °Brix</h2><span class="pill">다음 차시에 측정해요</span></div>
+  <div class="obj4">
+    <div class="box"><b>당도 <span class="u">°Brix</span></b><p><b>굴절당도계</b>: 물에 녹아 있는 당이 많을수록 빛이 더 꺾여요</p></div>
+    <div class="box"><b>pH</b><p><b>pH 미터</b>: 산의 세기. 숫자가 작을수록 더 강한 산성</p></div>
+    <div class="box"><b>산도 <span class="u">%</span></b><p><b>산·염기 적정</b>: NaOH를 넣어 중화시키며 산이 얼마나 들었는지 구해요</p></div>
+    <div class="box hot"><b>당산비</b><p><b>= 당도 ÷ 산도</b><br>단맛과 신맛의 <b>균형</b>을 숫자 하나로</p></div>
+  </div>
+  <div class="ask">🔍 우리 반 최우수 레시피의 <b>당산비</b>는 얼마일까? 점수가 높은 음료끼리 당산비도 비슷할까?</div>
+  <div class="todo2"><span>🧪 남은 시료는 폐기</span><span>🧽 주사기·컵 씻어 정리</span><span>🧻 책상 닦기</span><span>👋 수고했어요!</span></div>`;
+
+// ---------- 팝업 ----------
+const recLine = (rec, syrup = '알룰로스') => [...ING.map((i) => [i.k === 'syrup' ? syrup : i.short, rec[i.k]]), ['사과즙', rec.apple]]
+  .filter(([, v]) => v).map(([n, v]) => `${n} <b>${v}</b>`).join(' · ');
+const POP = {
+  rnd: () => `<span class="pill">실제 개발 사례 · 문경</span>
+    <h3>문경 오미자로 만든 <span class="r">스파클링 음료</span></h3>
+    <div class="case"><div>
+      <p>문경의 양조장 <b>오미나라</b>가 문경 오미자로 개발한 <b>‘오미로제’</b>는 <b>2018 평창 동계올림픽 공식 건배주</b>로 쓰였어요.</p>
+      <p>또 <b>문경시농업기술센터</b>와 함께 2015년부터 <b>5년 동안</b> 연구해, 값을 낮춘 보급형 제품을 2020년에 새로 내놓았어요.</p>
+      <p class="loopline"><span>만들기</span>→<span>맛보기·평가</span>→<span>고치기</span>를 몇 년 동안 되풀이 = <b>R&amp;D(연구 개발)</b></p></div>
+      <div class="tip">오늘 우리가 할 일도<br><b class="r">똑같아요!</b></div></div>
+    <p class="src">출처: 한국경제(2020.5), 경향신문(2018.2) 보도</p>`,
+  case: () => `<span class="pill">실제 사례 · 과일 품질</span>
+    <h3>한라봉은 <span class="r">당도와 산도</span>를 함께 재요</h3>
+    <div class="case"><div>
+      <p>한라봉을 출하할 때는 맛을 숫자로 확인해요. 흔히 쓰는 상품 기준은</p>
+      <div class="std"><span>당도 <b>12 °Brix</b> 이상</span><span>산 함량 <b>1.1 %</b> 이하</span></div>
+      <p>서귀포시의 출하 전 품질검사(2023년산)에 합격한 만감류는 평균 <b>12.8 °Brix, 산 0.95 %</b> → 당산비 약 <b>13.5</b></p>
+      <p>달기만 해도, 시기만 해도 안 돼요. <b>단맛과 신맛의 균형</b>을 숫자로 보는 거예요.</p></div>
+      <div class="tip">우리 오미자 음료의<br>당산비는<br><b class="r">얼마일까?</b></div></div>
+    <p class="src">출처: 경북매일(2021.1), 뉴스서울(서귀포시 품질검사) 보도 · 지역·단체마다 기준이 조금씩 달라요</p>`,
+  compare: () => {
+    const res = S.sess.results;
+    const mine = (res?.winners || []).map((g) => ({ cls: `${cls()} (우리 반)`, date: today(), g, score: res.groups?.[g]?.tasting, recipe: res.groups?.[g]?.recipe, syrup: '알룰로스', me: true }))
+      .filter((x) => x.recipe);
+    const list = [...mine, ...(S.sess.compare || [])];
+    const rows = list.map((x) => `<tr class="${x.me ? 'me' : ''}"><td class="c">${esc(x.cls)}<small>${esc(x.date)} · ${x.g}모둠</small></td>
+      <td>${cylinder(x.recipe, 'cylm')}</td><td class="rec">${recLine(x.recipe, x.syrup)}</td><td class="big">${fmt1(x.score)}</td></tr>`).join('');
+    return `<span class="pill">반 최우수 레시피 · 20 mL 기준</span>
+      <h3>다른 반 <span class="r">베스트</span>와 비교해 보자</h3>
+      ${list.length > 1 ? `<table class="ctable"><thead><tr><th>반</th><th></th><th>레시피 (mL)</th><th>시음 평균</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<p class="lead">리모컨 → 진행 탭에서 비교할 반을 골라 주세요.</p>'}
+      <p class="src">점수는 반마다 소믈리에가 달라서 그대로 비교하기는 어려워요. 레시피의 <b>비율</b>을 비교해 봐요.</p>`;
+  },
+};
 
 // 그린 뒤 이벤트 연결
 const AFTER = {
@@ -370,7 +421,7 @@ const AFTER = {
 // ---------- 조작 ----------
 async function go(delta) {
   if (!S) return;
-  const res = await goSlide(S, (S.sess.slide || 0) + delta, (m) => ask(m, { ok: '네' }));
+  const res = await stepSlide(S, delta, (m) => ask(m, { ok: '네' }));
   if (res?.error) toast(res.error);
 }
 
@@ -401,7 +452,13 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'q' || k === 'Q' || k === 'ㅂ') actions.qr();
   else if (k === 'r' || k === 'R' || k === 'ㄱ') actions.remote();
   else if (k === 'f' || k === 'F' || k === 'ㄹ') actions.fs();
-  else if (k === 'Escape') closeOverlay();
+  else if (k === 'p' || k === 'P' || k === 'ㅔ') {
+    const sl = DECK[S?.sess?.slide || 0];
+    if (sl?.pops) setPop(S, S.sess.pop || sl.pops[0][0]);
+  } else if (k === 'Escape') {
+    if (document.querySelector('.overlay')) closeOverlay();
+    else if (S?.sess?.pop) setPop(S, S.sess.pop);
+  }
 });
 
 start();

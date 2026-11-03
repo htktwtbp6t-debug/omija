@@ -3,30 +3,12 @@ import {
   db, doc, collection, onSnapshot, getDoc, getDocs, setDoc, updateDoc, writeBatch,
   serverTimestamp, arrayUnion, arrayRemove, increment, deleteField,
 } from './fb.js';
-import { ING, Q, shuffle, avg, recipeOf } from './util.js';
+import { ING, Q, DECK, shuffle, avg, recipeOf, classLabel } from './util.js';
 
 export const STAGES = ['intro', 'join', 'grouping', 'brief', 'develop', 'tasting', 'reveal', 'wrap'];
 export const stageIdx = (s) => STAGES.indexOf(s);
 
-// 발표 슬라이드 순서. stage는 그 슬라이드에 오면 수업이 그 단계까지 진행됨을 뜻한다 (뒤로 가도 단계는 그대로).
-export const DECK = [
-  { id: 'join', stage: 'join', title: 'QR 접속 · 출석' },
-  { id: 'group', stage: 'grouping', title: '모둠 배치' },
-  { id: 'supplies', stage: 'grouping', title: '준비물 챙기기' },
-  { id: 'hook', stage: 'intro', title: '도입: 맛을 숫자로?' },
-  { id: 'process', stage: 'intro', title: '도입: 탐구의 큰 그림' },
-  { id: 'omija', stage: 'intro', title: '도입: 우리 동네 특산품 오미자' },
-  { id: 'promise', stage: 'intro', title: '도입: 오늘의 약속' },
-  { id: 'rules', stage: 'brief', title: '개발 안내: 재료와 규칙' },
-  { id: 'steps', stage: 'brief', title: '개발 안내: 하는 방법' },
-  { id: 'board', stage: 'develop', title: '시제품 개발 (현황판)' },
-  { id: 'tprep', stage: 'tasting', phase: 'prep', title: '시음회 준비 (교사 제조)' },
-  { id: 'ttaste', stage: 'tasting', phase: 'open', title: '블라인드 시음' },
-  { id: 'reveal', stage: 'reveal', title: '결과 공개: 컵 뒤집기' },
-  { id: 'result', stage: 'reveal', title: '결과 공개: 모둠별 정리' },
-  { id: 'measure', stage: 'reveal', title: '정리: 객관적 지표로' },
-  { id: 'wrap', stage: 'wrap', title: '정리: 다음 차시 예고' },
-];
+export { DECK };
 
 const sref = (sid, ...p) => (p.length ? doc(db, 'sessions', sid, ...p) : doc(db, 'sessions', sid));
 const scol = (sid, name) => collection(db, 'sessions', sid, name);
@@ -92,11 +74,12 @@ function writeSummaries(S) {
 
 // ---------- 진행 ----------
 // 슬라이드 이동. 앞으로 갈 때만 단계가 바뀌고, 필요한 준비(시음회 컵 배정, 결과 계산)를 한다.
-export async function goSlide(S, idx, confirmFn) {
+// fromEnd: 뒤로 와서 들어가면 단계별 항목을 모두 보인 채로 연다
+export async function goSlide(S, idx, confirmFn, fromEnd = false) {
   const sess = S.sess;
   idx = Math.max(0, Math.min(DECK.length - 1, idx));
   const target = DECK[idx];
-  const upd = { slide: idx };
+  const upd = { slide: idx, sub: target.steps ? (fromEnd ? target.steps : 1) : null, pop: null };
   const cur = stageIdx(sess.stage);
   const tgt = stageIdx(target.stage);
   if (tgt > cur) {
@@ -120,6 +103,57 @@ export async function goSlide(S, idx, confirmFn) {
   await updateDoc(sref(S.sid), upd);
   return { ok: true };
 }
+
+// 다음/이전. 단계별 항목이 있는 슬라이드는 항목을 하나씩 보이고 숨긴 뒤에 슬라이드를 넘긴다
+export async function stepSlide(S, delta, confirmFn) {
+  const idx = S.sess.slide || 0;
+  const d = DECK[idx];
+  const sub = S.sess.sub || d.steps || 0;
+  if (d.steps && delta > 0 && sub < d.steps) return updateDoc(sref(S.sid), { sub: sub + 1 });
+  if (d.steps && delta < 0 && sub > 1) return updateDoc(sref(S.sid), { sub: sub - 1 });
+  return goSlide(S, idx + delta, confirmFn, delta < 0);
+}
+
+// 팝업 (발표 화면 위에 띄우는 사례·다른 반 베스트). 같은 것을 다시 누르면 닫힘
+export async function setPop(S, k) {
+  await updateDoc(sref(S.sid), { pop: S.sess.pop === k ? null : k });
+}
+
+// ---------- 다른 반 베스트 ----------
+// 결과가 나온 다른 수업 목록. 수업 코드는 학생이 읽는 수업 문서에 남기지 않는다
+export async function otherResults(S) {
+  const qs = await getDocs(collection(db, 'sessions'));
+  const out = [];
+  qs.forEach((d) => {
+    const s = d.data();
+    if (d.id === S.sid || !s.results?.winners?.length) return;
+    const at = s.createdAt?.toDate ? s.createdAt.toDate() : null;
+    const date = at ? `${at.getMonth() + 1}월 ${at.getDate()}일` : '';
+    // 11/4 전 수업은 설탕 시럽을 썼다
+    const old = at && at < new Date(2026, 10, 4);
+    for (const g of s.results.winners) {
+      const x = s.results.groups?.[g];
+      if (!x?.recipe) continue;
+      out.push({
+        key: `${d.id}:${g}`, cls: classLabel(s.classId), date, at: at ? at.getTime() : 0, g,
+        score: x.tasting ?? null, recipe: x.recipe, syrup: old ? '설탕 시럽' : '알룰로스',
+      });
+    }
+  });
+  return out.sort((a, b) => a.cls.localeCompare(b.cls) || a.at - b.at);
+}
+
+// 고른 항목을 수업 문서에 복사해 둔다 (발표 화면은 이것만 읽음). key는 지워서 저장
+export async function setCompare(S, items) {
+  await updateDoc(sref(S.sid), {
+    compare: items.map(({ key, ...x }) => ({ ...x, id: hashKey(key) })),
+  });
+}
+export const hashKey = (k) => {
+  let h = 0;
+  for (const c of k) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return (h >>> 0).toString(36);
+};
 
 // ---------- 출석·잠금 ----------
 export async function setAbsent(S, stu, on) {

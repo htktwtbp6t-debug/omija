@@ -7,20 +7,41 @@ export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// 재료 4종 (순서 고정). 11/3 사과즙 뺌
+// 재료 4종 (순서 고정). 11/3 사과즙 뺌, 11/4 설탕 시럽 → 알룰로스 시럽 (키 syrup은 그대로)
 export const ING = [
   { k: 'omija', name: '오미자 추출액', short: '오미자', color: 'var(--i-omija)', hex: '#D9264A' },
   { k: 'pear', name: '배즙', short: '배즙', color: 'var(--i-pear)', hex: '#C8DC8A' },
-  { k: 'syrup', name: '설탕 시럽', short: '시럽', color: 'var(--i-syrup)', hex: '#F4E7C6' },
+  { k: 'syrup', name: '알룰로스 시럽', short: '알룰로스', color: 'var(--i-syrup)', hex: '#F4E7C6' },
   { k: 'water', name: '정수', short: '정수', color: 'var(--i-water)', hex: '#9CD2EA' },
 ];
 export const TOTAL = 20; // 레시피는 1인분 20 mL 기준. 큰 컵에는 인원수만큼 곱해서 만든다
 export const BASE_ROUNDS = 2; // 모둠 레시피 기본 2번, 시간이 남으면 3번까지
 export const MAX_ROUNDS = 3;
 
+// 발표 슬라이드 순서. stage는 그 슬라이드에 오면 수업이 그 단계까지 진행됨을 뜻한다 (뒤로 가도 단계는 그대로).
+// steps: 다음을 누를 때마다 하나씩 나타나는 항목 수. pops: 리모컨에서 띄우는 팝업
+export const DECK = [
+  { id: 'join', stage: 'join', title: 'QR 접속 · 출석' },
+  { id: 'group', stage: 'grouping', title: '모둠 배치' },
+  { id: 'supplies', stage: 'grouping', title: '준비물 챙기기' },
+  { id: 'hook', stage: 'intro', title: '도입: 맛을 숫자로?', pops: [['rnd', '문경 오미자 개발 사례']] },
+  { id: 'process', stage: 'intro', title: '도입: 탐구의 큰 그림' },
+  { id: 'promise', stage: 'intro', title: '도입: 오미자 · 오늘의 약속' },
+  { id: 'rules', stage: 'brief', title: '개발 안내: 재료와 규칙', steps: 7 },
+  { id: 'steps', stage: 'brief', title: '개발 안내: 하는 방법' },
+  { id: 'board', stage: 'develop', title: '시제품 개발 (현황판)' },
+  { id: 'tprep', stage: 'tasting', phase: 'prep', title: '시음회 준비 (교사 제조)' },
+  { id: 'ttaste', stage: 'tasting', phase: 'open', title: '블라인드 시음' },
+  { id: 'reveal', stage: 'reveal', title: '결과 공개: 컵 뒤집기' },
+  { id: 'result', stage: 'reveal', title: '결과 공개: 모둠별 정리', pops: [['compare', '다른 반 베스트']] },
+  { id: 'measure', stage: 'reveal', title: '정리: 맛있는 레시피의 공통점?' },
+  { id: 'wrap', stage: 'wrap', title: '정리: 더 객관적인 방법 · 마무리', pops: [['case', '당산비 사례 (한라봉)']] },
+];
+export const slideIdx = (id) => DECK.findIndex((d) => d.id === id);
+
 // 모둠당 준비물 (n = 모둠 인원)
 export const SUPPLIES = (n) => [
-  { k: 'cups', name: '플라스틱 컵', qty: '5개', note: '오미자·배즙·설탕 시럽·정수 담을 컵 4 + 제작용 큰 컵 1', ic: 'big' },
+  { k: 'cups', name: '플라스틱 컵', qty: '5개', note: '오미자·배즙·알룰로스 시럽·정수 담을 컵 4 + 제작용 큰 컵 1', ic: 'big' },
   { k: 'syr', name: '주사기', qty: '4개', note: '재료마다 하나씩 따로', ic: 'syringe' },
   { k: 'paper', name: '시음 컵', qty: n ? `${n}개` : '1인 1개', note: n ? '한 사람에 하나' : '모둠 인원수만큼', ic: 'paper' },
   { k: 'stick', name: '커피스틱', qty: n ? `${n}개` : '1인 1개', note: n ? '한 사람에 하나 (젓기)' : '모둠 인원수만큼 (젓기)', ic: 'stick' },

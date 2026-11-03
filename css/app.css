@@ -210,3 +210,15 @@ textarea.in{width:100%;border:var(--bd);border-radius:12px;padding:10px 12px;min
 .tips span{border:2px solid var(--ink);border-radius:99px;padding:2px 10px;background:#fff}
 .prev{border:var(--bd);border-radius:12px;background:#fff;padding:10px 12px;margin-bottom:6px}
 .prev>b{display:inline-block;margin-bottom:6px}
+
+/* 11/4 준비물: 모둠장 체크 강조 */
+.ckcall{border:var(--bd);border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:1.1rem;padding:10px 14px;margin:12px 0 10px;box-shadow:3px 3px 0 var(--ink);animation:ckp 1.6s ease-in-out infinite}
+.ckcall .num{background:#fff;color:var(--ink);border-radius:99px;padding:0 .5em;margin-left:4px;font-size:.95rem}
+.ckcall.ok{background:var(--g3);color:var(--ink);animation:none}
+@keyframes ckp{50%{transform:scale(1.02)}}
+.suph{font-family:var(--disp);font-weight:400;font-size:1.5rem;margin:16px 0 4px}
+.ckcall .num{white-space:nowrap}
+.gline{display:flex;align-items:center;gap:10px;border:var(--bd);border-radius:12px;background:var(--c);padding:8px 12px;font-weight:700;box-shadow:3px 3px 0 var(--ink)}
+.gline .gchip{background:#fff}
+.gline b{font-family:var(--disp);font-weight:400;font-size:1.4rem}
+.gline>span:last-child{margin-left:auto}
