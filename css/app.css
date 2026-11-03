@@ -201,7 +201,6 @@ textarea.in{width:100%;border:var(--bd);border-radius:12px;padding:10px 12px;min
 .ing .put{display:flex;align-items:baseline;gap:.25em}
 .ing .put small{font-size:.72em;color:var(--mute);font-weight:700}
 .ing .put b{font-size:1.9em;line-height:1}
-.ing .ckv{width:1.6em;text-align:center;font-weight:900;color:#1d9a6c;font-size:1.3em}
 .fix{margin:8px 0 2px;border:2px dashed var(--ink);border-radius:12px;padding:6px 10px;background:#fff}
 .fix summary{font-weight:800;cursor:pointer;font-size:.92rem}
 .fix .ing{margin-top:6px}

@@ -363,7 +363,7 @@ export function groupStatus(S, g) {
     prep: ['준비물 챙기는 중', ''],
     free: ['각자 만들어 맛보는 중', '기록 없이 자유롭게'],
     plan: ['모둠 레시피 정하는 중', `시제품 ${r}`],
-    make: ['큰 컵에 만드는 중', `시제품 ${r} · 재료 ${Object.values(gd.rounds?.[r]?.checked || {}).filter(Boolean).length}/${ING.length}`],
+    make: ['큰 컵에 만드는 중', `시제품 ${r}`],
     rate: ['나눠 마시고 평가 중', `시제품 ${r} · ${done.length}/${present.length}명`],
     decide: ['결과 보고 의논 중', `시제품 ${r} 결과`],
     done: ['개발 완료', gd.best ? `베스트: 시제품 ${gd.best}` : ''],

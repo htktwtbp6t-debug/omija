@@ -213,7 +213,7 @@ R.board = () => {
       const rd = gd?.rounds?.[r];
       let f = 0;
       if (rd?.actual && (r < gd.round || ['label', 'rate', 'decide', 'done'].includes(gd.step))) f = 100;
-      else if (r === gd?.round && gd.step === 'make') f = Math.round((Object.values(rd?.checked || {}).filter(Boolean).length / ING.length) * 100);
+      else if (r === gd?.round && gd.step === 'make') f = 50;
       return `<span class="cup ${r === gd?.round && !fin ? 'now' : ''}" style="--f:${f}%"></span>`;
     }).join('');
     const proxy = new Set(S.summaries[g]?.rounds?.[st.r]?.proxy || []);

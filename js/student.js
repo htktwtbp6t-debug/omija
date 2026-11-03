@@ -56,6 +56,8 @@ function watchCore() {
   // 서버 확인 전(캐시만 본 상태)에는 '없음'으로 판단하지 않고 연결 중으로 기다린다
   const meta = { includeMetadataChanges: true };
   unsub.dev = onSnapshot(doc(db, 'sessions', sid, 'devices', st.uid), meta, (d) => {
+    // 학번 저장이 서버에 닿기 전에 모둠을 구독하면 권한 거절로 끝나 화면이 멈춘다 (수업 도중 입장)
+    if (d.metadata.hasPendingWrites) return;
     if (d.exists()) { st.stu = d.data().stu; st.devReady = true; }
     else if (!d.metadata.fromCache) st.devReady = true;
     if (st.devReady) { syncGroup(); render(); }
@@ -105,26 +107,32 @@ function connecting() {
 }
 
 // 내 모둠이 정해지면 모둠 문서·평균 구독
-function syncGroup() {
+function syncGroup(force) {
   const s = st.sess;
   let g = null;
   if (st.stu && s?.groupsConfirmed && s.groups) {
     for (const [k, v] of Object.entries(s.groups)) if (v.members?.includes(st.stu)) g = k;
   }
-  if (g === st.g) return;
+  const same = g === st.g;
+  if (same && !force) return;
   st.g = g;
   unsub.g?.(); unsub.summ?.();
-  st.gdoc = null; st.summ = null;
+  if (!same) { st.gdoc = null; st.summ = null; }
   if (!g) return;
+  // 권한이 잠깐 거절되면 다시 구독한다. 학번이 다른 기기로 옮겨졌으면 다시 고를 때 pick()이 구독한다
+  const retry = () => {
+    clearTimeout(st.gRetry);
+    st.gRetry = setTimeout(() => { if (st.claims.get(st.stu) === st.uid) syncGroup(true); }, 3000);
+  };
   unsub.g = onSnapshot(doc(db, 'sessions', sid, 'groups', g), (d) => {
     st.gdoc = d.exists() ? d.data() : null;
     syncRating();
     render();
-  }, () => {});
+  }, retry);
   unsub.summ = onSnapshot(doc(db, 'sessions', sid, 'summaries', g), (d) => {
     st.summ = d.exists() ? d.data() : null;
     render();
-  }, () => {});
+  }, retry);
 }
 
 // 이번 회차 내 평가 구독
@@ -233,7 +241,7 @@ async function pick(stu) {
     st.stu = stu;
     st.forcePick = false;
     st.claims.set(stu, st.uid);
-    syncGroup();
+    syncGroup(true);
     render();
   } catch (e) {
     console.error(e);
@@ -441,7 +449,7 @@ function leaderPlan(head, gd) {
     renderDevelop();
   }));
   $('#go').addEventListener('click', () => {
-    gUpdate({ [`rounds.${r}`]: { plan: { ...p }, actual: { ...p }, checked: {} }, step: 'make' });
+    gUpdate({ [`rounds.${r}`]: { plan: { ...p }, actual: { ...p } }, step: 'make' });
   });
 }
 
@@ -473,7 +481,6 @@ function bindBatch() {
 }
 const makeGuide = () => guide(illo(['syringe', '>', 'big::큰 컵', '>', 'stick::젓기', '>', 'papers::나눠 따르기']), [
   '재료마다 <b>그 재료의 주사기</b>로, 오른쪽 <b>넣을 양</b>만큼 큰 컵(제작용)에 넣어요.',
-  '하나 넣을 때마다 <b>체크</b>해요.',
   '다 넣으면 커피스틱으로 <b>잘 저어요</b>.',
   '모둠원 <b>시음 컵에 똑같이 나눠</b> 따라요.',
 ]);
@@ -483,16 +490,12 @@ function leaderMake(head, gd) {
   const rd = gd.rounds?.[r] || {};
   const plan = rd.plan || emptyRecipe();
   const act = { ...plan, ...(rd.actual || {}) };
-  const ck = rd.checked || {};
   const n = batchN();
-  const isOk = (k) => ck[k] || (plan[k] === 0 && act[k] === 0);
-  const allOk = ING.every((i) => isOk(i.k));
   const rows = ING.map((i) => {
     const diff = act[i.k] !== plan[i.k];
-    return `<div class="ing mk2 ${isOk(i.k) ? 'ok' : ''} ${diff ? 'diff' : ''}" style="--c:${i.color}"><span class="sw"></span>
+    return `<div class="ing mk2 ${diff ? 'diff' : ''}" style="--c:${i.color}"><span class="sw"></span>
       <span>${i.short}<small class="per">1인분 ${act[i.k]} mL${diff ? ` (계획 ${plan[i.k]})` : ''}</small></span>
-      <span class="put"><small>넣을 양</small><b class="num">${act[i.k] * n}</b><small>mL</small></span>
-      <button class="ck" data-ck="${i.k}" aria-label="${i.short} 넣음"></button></div>`;
+      <span class="put"><small>넣을 양</small><b class="num">${act[i.k] * n}</b><small>mL</small></span></div>`;
   }).join('');
   view(`${head}<h2>큰 컵에 <span class="hl">만들기</span></h2>
     ${makeGuide()}
@@ -501,7 +504,7 @@ function leaderMake(head, gd) {
     <details class="fix"><summary>계획과 다르게 넣었어요 (1인분 기준으로 고치기)</summary>
       ${ING.map((i) => `<div class="ing step-row" style="--c:${i.color}"><span class="sw"></span><span>${i.short}</span>
         <span class="stepper"><button data-k="${i.k}" data-d="-1">−</button><span class="v">${act[i.k]}<small>mL</small></span><button data-k="${i.k}" data-d="1">+</button></span></div>`).join('')}</details>
-    <div class="foot"><button class="btn block" id="go" ${allOk ? '' : 'disabled'}>${allOk ? '나눠 따랐어요 → 각자 평가 시작' : '재료를 넣고 체크해요'}</button>
+    <div class="foot"><button class="btn block" id="go">다 만들었어요 → 각자 평가 시작</button>
       <button class="btn ghost sm" id="back">← 레시피 다시 정하기</button></div>`, 'make');
   const fix = main.querySelector('details.fix');
   if (st.fixOpen === r) fix.open = true; // 회차가 바뀌면 다시 접힌 채로
@@ -511,10 +514,6 @@ function leaderMake(head, gd) {
     const k = b.dataset.k;
     const v = Math.max(0, Math.min(TOTAL * 2, act[k] + Number(b.dataset.d)));
     gUpdate({ [`rounds.${r}.actual.${k}`]: v });
-  }));
-  main.querySelectorAll('[data-ck]').forEach((b) => b.addEventListener('click', () => {
-    const k = b.dataset.ck;
-    gUpdate({ [`rounds.${r}.checked.${k}`]: !ck[k] });
   }));
   $('#go').addEventListener('click', async () => {
     if (!(await ask('모두의 시음 컵에 나눠 따랐나요?<br>이제 각자 폰으로 평가해요.', { ok: '평가 시작' }))) return;
@@ -529,11 +528,10 @@ function leaderMake(head, gd) {
 function memberMake(head, gd) {
   const rd = gd.rounds?.[gd.round] || {};
   const act = rd.actual || rd.plan || emptyRecipe();
-  const ck = rd.checked || {};
   const n = batchN();
-  const rows = ING.map((i) => `<div class="ing mk2 ${ck[i.k] ? 'ok' : ''}" style="--c:${i.color}"><span class="sw"></span>
+  const rows = ING.map((i) => `<div class="ing mk2" style="--c:${i.color}"><span class="sw"></span>
     <span>${i.short}<small class="per">1인분 ${act[i.k]} mL</small></span>
-    <span class="put"><small>넣을 양</small><b class="num">${act[i.k] * n}</b><small>mL</small></span><span class="ckv">${ck[i.k] ? '✓' : ''}</span></div>`).join('');
+    <span class="put"><small>넣을 양</small><b class="num">${act[i.k] * n}</b><small>mL</small></span></div>`).join('');
   view(`${head}<h2>같이 <span class="hl">만들어요</span></h2>
     ${makeGuide()}${batchHead(false)}<div>${rows}</div>
     <p class="hint" style="margin-top:10px">다 나눠 따르면 모둠장이 평가를 시작해요. <b>마시고 나서 꼭 이 폰으로 평가!</b></p>`, 'mmake');
