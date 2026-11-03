@@ -1,5 +1,5 @@
 // 발표 화면 (교사 노트북 → TV)
-import { whenAuth, isTeacherUser, teacherSignIn, pageUrl } from './fb.js';
+import { whenAuth, isTeacherUser, teacherSignIn, logout, pageUrl } from './fb.js';
 import { $, esc, ING, MAX_ROUNDS, BASE_ROUNDS, SUPPLIES, gColor, cylinder, qrSvg, illo, loadNames, fmt1, toast, ask, classLabel } from './util.js';
 import {
   DECK, watchClass, stepSlide, setPop, drawGroups, confirmGroups, moveMember, setLeader, groupStatus,
@@ -324,7 +324,8 @@ R.wrap = () => `<div class="hd"><h2>더 <span class="r">객관적</span>으로: 
     <div class="box hot"><b>당산비</b><p><b>= 당도 ÷ 산도</b><br>단맛과 신맛의 <b>균형</b>을 숫자 하나로</p></div>
   </div>
   <div class="ask">🔍 우리 반 최우수 레시피의 <b>당산비</b>는 얼마일까? 점수가 높은 음료끼리 당산비도 비슷할까?</div>
-  <div class="todo2"><span>🧪 남은 시료는 폐기</span><span>🧽 주사기·컵 씻어 정리</span><span>🧻 책상 닦기</span><span>👋 수고했어요!</span></div>`;
+  <div class="todo2"><span>🧪 남은 시료는 폐기</span><span>🧽 주사기·컵 씻어 정리</span><span>🧻 책상 닦기</span><span>👋 수고했어요!</span></div>
+  <button class="sbtn lo" data-logout>로그아웃</button>`;
 
 // ---------- 팝업 ----------
 const recLine = (rec, syrup = '알룰로스') => [...ING.map((i) => [i.k === 'syrup' ? syrup : i.short, rec[i.k]]), ['사과즙', rec.apple]]
@@ -364,6 +365,14 @@ const POP = {
 
 // 그린 뒤 이벤트 연결
 const AFTER = {
+  // 공용 기기에서 수업을 마칠 때: 이 브라우저의 선생님 로그인 해제 (같은 브라우저의 관리자·리모컨 탭도 함께 끊김)
+  wrap() {
+    stage.querySelector('[data-logout]')?.addEventListener('click', async () => {
+      if (!(await ask('이 기기에서 로그아웃할까요?<br><span style="font-size:.9rem">이 브라우저의 발표 화면·관리자 탭이 모두 끊겨요. 수업 데이터는 그대로 남아요.</span>', { ok: '로그아웃' }))) return;
+      await logout();
+      location.reload();
+    });
+  },
   group() {
     const el = stage.firstElementChild;
     const drawSeq = S.sess.drawSeq || 0;

@@ -295,3 +295,5 @@ html,body{height:100%;overflow:hidden;background:#1d1b19}
 .obj4 .box{min-height:22cqi}
 .obj4 p{font-size:1.9cqi}
 .slide[data-id="wrap"] .ask{margin-top:auto}
+.sbtn.lo{position:absolute;right:14cqi;bottom:1.2cqi;z-index:4;font-size:1.2cqi;opacity:.6}
+.sbtn.lo:hover{opacity:1}
