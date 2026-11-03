@@ -96,6 +96,7 @@ function classHtml(cid) {
         <span class="mute">${s.open ? `진행 중 · ${STAGE_NAME[s.stage] || ''}` : '닫힘'}</span></div>
       <div class="acts">
         <a class="btn sm ink" href="${pageUrl('show.html', { s: sid })}" target="_blank">발표 화면</a>
+        <button class="btn sm ghost" data-qr="show:${sid}">발표 화면 QR</button>
         <button class="btn sm ghost" data-qr="remote:${sid}">리모컨 QR</button>
         <button class="btn sm ghost" data-qr="student:${sid}">학생 QR</button>
         <button class="btn sm ghost" data-toggle="${sid}">${s.open ? '닫기' : '다시 열기'}</button>
@@ -117,7 +118,7 @@ function render() {
       <ol style="padding-left:1.2em;line-height:1.9">
         <li><b>새 수업 열기</b> → 발표 화면이 새 탭으로 열려요. TV로 미러링하고 F 키로 전체 화면.</li>
         <li>휴대폰으로 <b>리모컨 QR</b>을 찍고 같은 Google 계정으로 로그인.</li>
-        <li>발표 화면: → / ← / 스페이스 / 클리커로 넘기기 · Q 학생 QR · R 리모컨 QR.</li>
+        <li>발표 화면: → / ← / 스페이스 / 클리커로 넘기기 · Q 학생 QR · R 리모컨 QR · P 사례 팝업.</li>
         <li>수업이 끝나면 리모컨 '마무리'에서 <b>수업 닫기</b>. 학기 말에 <b>엑셀 내보내기</b> 후 <b>반 데이터 삭제</b>.</li>
       </ol>
       <p class="mute" style="margin-top:10px">이름은 이 컴퓨터 브라우저에만 있어요. <button class="btn sm ghost" id="forget">이 브라우저의 이름 모두 지우기</button></p></section>`;
@@ -146,10 +147,13 @@ function bind() {
   $$('[data-open]').forEach((b) => b.addEventListener('click', () => openSession(b.dataset.open)));
   $$('[data-qr]').forEach((b) => b.addEventListener('click', () => {
     const [kind, sid] = b.dataset.qr.split(':');
-    const url = kind === 'remote' ? pageUrl('remote.html', { s: sid }) : pageUrl('index.html', { s: sid });
+    const page = { remote: 'remote.html', show: 'show.html', student: 'index.html' }[kind];
+    const url = pageUrl(page, { s: sid });
+    const title = { remote: '선생님 리모컨', show: '발표 화면', student: '학생 접속' }[kind];
+    const note = { remote: '선생님 휴대폰으로 찍고 Google 로그인', show: 'TV·노트북·태블릿에서 찍고 선생님 Google 계정으로 로그인', student: '' }[kind];
     const m = document.createElement('div');
     m.className = 'modal qrm';
-    m.innerHTML = `<div class="modal-box" style="text-align:center"><h2 class="disp" style="font-size:24px">${kind === 'remote' ? '선생님 리모컨' : '학생 접속'}</h2>
+    m.innerHTML = `<div class="modal-box" style="text-align:center"><h2 class="disp" style="font-size:24px">${title}</h2>${note ? `<p class="mute" style="font-size:13px;margin-top:4px">${note}</p>` : ''}
       <div class="qrbox">${qrSvg(url)}</div><p class="mute" style="font-size:12px;word-break:break-all">${esc(url)}</p>
       <div class="modal-btns"><button class="btn ghost" data-copy>주소 복사</button><button class="btn ink" data-x>닫기</button></div></div>`;
     m.addEventListener('click', (e) => {
