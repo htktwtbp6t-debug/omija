@@ -2,7 +2,7 @@
 import { whenAuth, isTeacherUser, teacherSignIn, pageUrl } from './fb.js';
 import { $, $$, esc, ING, gColor, loadNames, toast, ask, classLabel } from './util.js';
 import {
-  DECK, stageIdx, watchClass, goSlide, stepSlide, setPop, otherResults, setCompare, hashKey, setAbsent, unlock, drawGroups, confirmGroups, moveMember, setLeader,
+  DECK, stageIdx, watchClass, goSlide, stepSlide, setPop, viewAct, setAbsent, unlock, drawGroups, confirmGroups, moveMember, setLeader,
   markMade, setSommelier, closeSession, reopenSession, groupStatus, setTimer, addTimer,
 } from './teacher.js';
 
@@ -14,7 +14,6 @@ let S = null;
 let tab = 'go';
 let lastStage = null;
 let tasteMode = 'cup';
-let others = null; // 다른 반 베스트 후보 (리모컨에서 처음 열 때 한 번 불러옴)
 
 const STAGE_NAME = { intro: '도입', join: '접속', grouping: '모둠 배치', brief: '개발 안내', develop: '시제품 개발', tasting: '시음회', reveal: '결과 공개', wrap: '정리' };
 const STAGE_TAB = { intro: 'go', join: 'att', grouping: 'grp', brief: 'go', develop: 'go', tasting: 'taste', reveal: 'go', wrap: 'end' };
@@ -135,24 +134,30 @@ function tabGo() {
   return `<div class="now"><p class="mute" style="font-weight:700">지금 TV · ${idx + 1} / ${DECK.length}</p><p class="t">${cur.title}${subTxt(cur)}</p>
       ${nextTxt ? `<p class="mute" style="margin-top:4px">${nextTxt}</p>` : ''}</div>
     <div class="nav"><button class="btn ghost" data-nav="-1">‹ 이전</button><button class="btn" data-nav="1">다음 ›</button></div>
-    ${pops}${cur.id === 'result' ? compareSec() : ''}
+    ${pops}${viewSec(cur.id)}
     ${ctx}
     ${timer}
     <div class="sec"><h3>슬라이드 바로 가기</h3><div class="slist">${list}</div>
     <p class="mute" style="font-size:.85rem">아직 오지 않은 단계는 '다음'으로 차례대로 넘어가요.</p></div>`;
 }
 
-// 다른 반 베스트: 고른 반만 TV 팝업에 나온다
-function compareSec() {
-  if (!others) {
-    others = 'loading';
-    otherResults(S).then((v) => { others = v; render(); }).catch((e) => { console.error(e); others = []; render(); });
+// 반별 비교 화면의 버튼 (TV와 같이 움직임)
+function viewSec(id) {
+  const v = S.sess.view || {};
+  if (id === 'classes') {
+    const list = v.list || [];
+    const open = new Set(v.open || []);
+    return `<div class="sec"><h3>TV 화면 조작</h3>
+      <div class="tbtns"><button class="btn sm ghost" data-vall>${open.size && open.size === list.length ? '모두 접기' : '모두 펼치기'}</button>
+        <button class="btn sm ${v.ratio ? 'ink' : 'ghost'}" data-vratio>오미자 : 시럽 비율</button></div>
+      <div class="tbtns" style="margin-top:6px">${list.map((c) => `<button class="btn sm ${open.has(c.id) ? 'ink' : 'ghost'}" data-vopen="${esc(c.id)}">${esc(c.name)}</button>`).join('')}</div></div>`;
   }
-  if (others === 'loading') return '<div class="sec"><h3>다른 반 베스트</h3><p class="mute">불러오는 중…</p></div>';
-  const on = new Set((S.sess.compare || []).map((x) => x.id));
-  return `<div class="sec"><h3>다른 반 베스트 <span class="mute" style="font-weight:600">(고른 반만 TV에)</span></h3>
-    ${others.map((x) => `<label class="row ${on.has(hashKey(x.key)) ? 'on' : ''}"><span><input type="checkbox" data-cmp="${esc(x.key)}" ${on.has(hashKey(x.key)) ? 'checked' : ''}>
-      ${esc(x.cls)} <span class="mute">${esc(x.date)} · ${x.g}모둠 · ${x.score ?? '–'}점</span></span></label>`).join('') || '<p class="mute">결과가 나온 다른 반이 아직 없어요.</p>'}</div>`;
+  if (id === 'spread') {
+    return `<div class="sec"><h3>TV 화면 조작</h3><div class="tbtns">
+      <button class="btn sm ${v.tab === 'taste' ? 'ghost' : 'ink'}" data-vtab="group">모둠 평가</button>
+      <button class="btn sm ${v.tab === 'taste' ? 'ink' : 'ghost'}" data-vtab="taste">시음회</button></div></div>`;
+  }
+  return '';
 }
 
 // ---------- 출석 ----------
@@ -239,12 +244,7 @@ function tabEnd() {
 function bind() {
   $$('[data-nav]').forEach((b) => b.addEventListener('click', () => step(Number(b.dataset.nav))));
   $$('[data-pop]').forEach((b) => b.addEventListener('click', () => setPop(S, b.dataset.pop).catch((e) => toast(e.message))));
-  $$('[data-cmp]').forEach((c) => c.addEventListener('change', () => {
-    const keys = new Set((S.sess.compare || []).map((x) => x.id));
-    const id = hashKey(c.dataset.cmp);
-    if (c.checked) keys.add(id); else keys.delete(id);
-    setCompare(S, others.filter((x) => keys.has(hashKey(x.key)))).catch((e) => toast(e.message));
-  }));
+  $$('[data-vall],[data-vratio],[data-vtab],[data-vopen]').forEach((b) => b.addEventListener('click', () => viewAct(S, b.dataset).catch((e) => toast(e.message))));
   $$('[data-slide]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.slide))));
   $$('[data-absent]').forEach((b) => b.addEventListener('click', () => {
     const s = b.dataset.absent;

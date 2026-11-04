@@ -33,8 +33,9 @@ export const DECK = [
   { id: 'tprep', stage: 'tasting', phase: 'prep', title: '시음회 준비 (교사 제조)' },
   { id: 'ttaste', stage: 'tasting', phase: 'open', title: '블라인드 시음' },
   { id: 'reveal', stage: 'reveal', title: '결과 공개: 컵 뒤집기' },
-  { id: 'result', stage: 'reveal', title: '결과 공개: 모둠별 정리', pops: [['compare', '다른 반 베스트']] },
-  { id: 'measure', stage: 'reveal', title: '정리: 맛있는 레시피의 공통점?' },
+  { id: 'result', stage: 'reveal', title: '결과 공개: 모둠별 정리' },
+  { id: 'classes', stage: 'reveal', title: '정리: 반별 최고 레시피' },
+  { id: 'spread', stage: 'reveal', title: '정리: 같은 레시피, 다른 평가' },
   { id: 'wrap', stage: 'wrap', title: '정리: 더 객관적인 방법 · 마무리', pops: [['case', '당산비 사례 (한라봉)']] },
 ];
 export const slideIdx = (id) => DECK.findIndex((d) => d.id === id);

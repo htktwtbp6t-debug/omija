@@ -119,41 +119,78 @@ export async function setPop(S, k) {
   await updateDoc(sref(S.sid), { pop: S.sess.pop === k ? null : k });
 }
 
-// ---------- 다른 반 베스트 ----------
-// 결과가 나온 다른 수업 목록. 수업 코드는 학생이 읽는 수업 문서에 남기지 않는다
-export async function otherResults(S) {
+// ---------- 반별 비교 (반별 최고 레시피 · 같은 레시피 다른 평가) ----------
+// 교사 화면이 서버에서 직접 읽어 메모리에만 둔다. 학생이 읽는 수업 문서에는 복사하지 않는다
+export async function classData(S) {
   const qs = await getDocs(collection(db, 'sessions'));
-  const out = [];
+  const lesson = S.sess.lesson || 1;
+  const pick = {};
   qs.forEach((d) => {
     const s = d.data();
-    if (d.id === S.sid || !s.results?.winners?.length) return;
+    if (!s.classId || !s.groupsConfirmed || (s.lesson || 1) !== lesson) return;
+    if (s.classId === S.sess.classId && d.id !== S.sid) return;
     const at = s.createdAt?.toDate ? s.createdAt.toDate() : null;
-    const date = at ? `${at.getMonth() + 1}월 ${at.getDate()}일` : '';
-    // 11/4 전 수업은 설탕 시럽을 썼다
-    const old = at && at < new Date(2026, 10, 4);
-    for (const g of s.results.winners) {
-      const x = s.results.groups?.[g];
-      if (!x?.recipe) continue;
-      out.push({
-        key: `${d.id}:${g}`, cls: classLabel(s.classId), date, at: at ? at.getTime() : 0, g,
-        score: x.tasting ?? null, recipe: x.recipe, syrup: old ? '설탕 시럽' : '알룰로스',
-      });
-    }
+    const c = { id: d.id, s, at, rank: s.results ? 1 : 0 };
+    const o = pick[s.classId];
+    if (!o || c.rank > o.rank || (c.rank === o.rank && (c.at || 0) > (o.at || 0))) pick[s.classId] = c;
   });
-  return out.sort((a, b) => a.cls.localeCompare(b.cls) || a.at - b.at);
+  const classes = [];
+  const protos = [];
+  let cups = [];
+  await Promise.all(Object.entries(pick).map(async ([cid, { id, s, at }]) => {
+    const me = id === S.sid;
+    const [grp, rat, tas] = await Promise.all([
+      getDocs(collection(db, 'sessions', id, 'groups')),
+      getDocs(collection(db, 'sessions', id, 'ratings')),
+      me ? getDocs(collection(db, 'sessions', id, 'tastes')) : null,
+    ]);
+    const res = s.results;
+    const sour = {};
+    rat.forEach((d) => {
+      const r = d.data();
+      if (typeof r.sour === 'number') (sour[`${r.g}_${r.r}`] ||= []).push(r.sour);
+    });
+    const gl = [];
+    grp.forEach((d) => {
+      const x = d.data();
+      const recipe = recipeOf(x.rounds?.[x.best]) || res?.groups?.[d.id]?.recipe;
+      if (recipe) gl.push({ g: d.id, recipe, score: res?.groups?.[d.id]?.tasting ?? null });
+      for (const [r, rd] of Object.entries(x.rounds || {})) {
+        const rec = recipeOf(rd);
+        const v = sour[`${d.id}_${r}`];
+        if (rec && v?.length) protos.push({ recipe: rec, sour: avg(v), n: v.length });
+      }
+    });
+    if (!gl.length) return;
+    gl.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+    const top = res?.groups?.[res.winners?.[0]];
+    const mean = Object.fromEntries(ING.map((i) => [i.k, avg(gl.map((g) => g.recipe[i.k] || 0))]));
+    classes.push({
+      id: cid, label: classLabel(cid), me, noBest: !top?.recipe, recipe: top?.recipe || mean, score: top?.recipe ? top.tasting ?? null : null,
+      date: at ? `${at.getMonth() + 1}/${at.getDate()}` : '', syrup: at && at < new Date(2026, 10, 4) ? '설탕 시럽' : '알룰로스',
+      groups: gl,
+    });
+    if (me) {
+      const tastes = tas.docs.map((d) => d.data());
+      cups = (res?.cups || []).map((c) => ({ cup: c.cup, g: c.g, scores: tastes.map((t) => t.scores?.[c.cup]).filter((v) => typeof v === 'number') }));
+    }
+  }));
+  classes.sort((a, b) => (a.noBest - b.noBest) || (b.score ?? -1) - (a.score ?? -1));
+  return { classes, protos, cups };
 }
 
-// 고른 항목을 수업 문서에 복사해 둔다 (발표 화면은 이것만 읽음). key는 지워서 저장
-export async function setCompare(S, items) {
-  await updateDoc(sref(S.sid), {
-    compare: items.map(({ key, ...x }) => ({ ...x, id: hashKey(key) })),
-  });
+// 화면 상태만 수업 문서에 둔다 (TV·리모컨이 같이 움직이게). 반 이름 외의 자료는 넣지 않는다
+export const setView = (S, patch) => updateDoc(sref(S.sid), Object.fromEntries(Object.entries(patch).map(([k, v]) => [`view.${k}`, v])));
+export function viewAct(S, ds) {
+  const v = S.sess.view || {};
+  const all = (v.list || []).map((x) => x.id);
+  if ('vall' in ds) return setView(S, { open: (v.open || []).length === all.length ? [] : all });
+  if ('vratio' in ds) return setView(S, { ratio: !v.ratio });
+  if (ds.vtab) return setView(S, { tab: ds.vtab });
+  const open = new Set(v.open || []);
+  if (open.has(ds.vopen)) open.delete(ds.vopen); else open.add(ds.vopen);
+  return setView(S, { open: [...open] });
 }
-export const hashKey = (k) => {
-  let h = 0;
-  for (const c of k) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return (h >>> 0).toString(36);
-};
 
 // ---------- 출석·잠금 ----------
 export async function setAbsent(S, stu, on) {

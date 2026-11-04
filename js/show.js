@@ -2,7 +2,7 @@
 import { whenAuth, isTeacherUser, teacherSignIn, logout, pageUrl } from './fb.js';
 import { $, esc, ING, MAX_ROUNDS, BASE_ROUNDS, SUPPLIES, gColor, cylinder, qrSvg, illo, loadNames, fmt1, toast, ask, classLabel } from './util.js';
 import {
-  DECK, watchClass, stepSlide, setPop, drawGroups, confirmGroups, moveMember, setLeader, groupStatus,
+  DECK, watchClass, stepSlide, setPop, drawGroups, confirmGroups, moveMember, setLeader, groupStatus, classData, setView, viewAct,
 } from './teacher.js';
 
 const stage = $('#stage');
@@ -66,7 +66,7 @@ const GOALS = [
   '맛을 더 객관적으로 나타낼 수 있는 지표는 무엇이 있을지 알아본다',
 ];
 // 슬라이드별 지금 목표 (없는 장은 띠 없음)
-const GOAL_NOW = { promise: 0, rules: 0, steps: 0, board: 0, tprep: 0, ttaste: 0, reveal: 0, result: 1, measure: 1, wrap: 2 };
+const GOAL_NOW = { promise: 0, rules: 0, steps: 0, board: 0, tprep: 0, ttaste: 0, reveal: 0, result: 1, classes: 1, spread: 1, wrap: 2 };
 const goalBand = (now) => `<div class="gband"><span class="gl">학습목표</span>${GOALS.map((t, i) => `<div class="${i === now ? 'on' : ''}"><i>${i + 1}</i><span>${t}</span></div>`).join('')}</div>`;
 
 // ---------- 그리기 ----------
@@ -77,6 +77,7 @@ function render() {
   const sl = DECK[idx];
   let html = (R[sl.id] || (() => ''))();
   html += `<div class="pager">${idx + 1} / ${DECK.length}</div>`;
+  if (sl.id === 'classes' || sl.id === 'spread') loadCD();
   const goalNow = GOAL_NOW[sl.id];
   if (goalNow !== undefined) html += goalBand(goalNow);
   const pop = S.sess.pop && sl.pops?.some(([k]) => k === S.sess.pop) ? S.sess.pop : null;
@@ -98,6 +99,7 @@ function render() {
     el.innerHTML = html;
   }
   AFTER[sl.id]?.(fresh);
+  stage.querySelectorAll('[data-vall],[data-vratio],[data-vtab],[data-vopen]').forEach((b) => b.addEventListener('click', () => viewAct(S, b.dataset).catch((e) => toast(e.message))));
   stage.querySelectorAll('[data-popk]').forEach((b) => b.addEventListener('click', () => setPop(S, b.dataset.popk)));
   stage.querySelector('.pop')?.addEventListener('click', () => setPop(S, S.sess.pop));
 }
@@ -114,8 +116,7 @@ R.hook = () => `<div class="l">
     <span class="pill" style="align-self:flex-start">과탐실2 · ${cls()} · ${today()}</span>
     <h1>‘맛있다’를 <span class="r">숫자</span>로<br>말할 수 있을까?<br><span class="box2">오늘은 레시피 찾기</span></h1>
     <p class="q"><b>우리 동네 특산품</b> 오미자로 음료를 만들고,<br>맛있는 음료가 어떤지 <b>데이터</b>로 남겨 보자.</p>
-    <div class="loop"><span class="k">오늘 · 레시피 찾기</span><em>→</em><span>맛을 점수로 기록</span><em>→</em><span>맛있는 음료의 데이터</span></div>
-  </div>
+      </div>
   <div class="rc">${cylinder({ omija: 7, pear: 5, syrup: 4, water: 4 })}<div class="badge">오미자<small>다섯 가지 맛</small></div></div>
   <div class="marq"><div>${'<span>안전</span><span class="s">✦</span><span>손 씻기</span><span class="s">✦</span><span>정직한 기록</span><span class="s">✦</span><span>먹었으면 평가</span><span class="s">✦</span><span>협력</span><span class="s">✦</span>'.repeat(2)}</div></div>`;
 
@@ -310,25 +311,105 @@ R.result = () => {
     <table class="rtable"><thead><tr><th>모둠</th><th>베스트</th><th>레시피 (mL)</th><th>모둠 내<br>종합 맛</th><th>시음회</th><th>시제품별 종합 맛</th><th>선정 이유</th></tr></thead><tbody>${rows}</tbody></table>`;
 };
 
-// 질문 던지기: 맛있다고 느낀 레시피들 사이에 공통점이 있을까?
-R.measure = () => {
-  const res = S.sess.results;
-  const rows = groupKeys().map((g) => ({ g, ...(res?.groups?.[g] || {}) })).filter((x) => x.recipe)
-    .sort((a, b) => (b.tasting ?? -1) - (a.tasting ?? -1));
-  const cards = rows.map((x) => `<div class="mcard" style="--c:${gColor(x.g)}"><span class="gchip">${x.g}</span>${cylinder(x.recipe, 'cylm')}
-      <span class="sc">${fmt1(x.tasting)}<small>시음회</small></span>
-      <span class="rc">${ING.map((i) => `<i style="--c:${i.color}"></i>${i.short} <b>${x.recipe[i.k]}</b>`).join('<br>')}</span></div>`).join('');
-  return `<div class="hd"><h2>맛있는 레시피들, <span class="r">공통점</span>이 있을까?</h2><span class="pill">시음회 점수 높은 순</span></div>
-    <div class="mrow" style="grid-template-columns:repeat(${Math.max(rows.length, 1)},1fr)">${cards || '<p class="lead">결과가 아직 없어요.</p>'}</div>
-    <div class="qs">
-      <div class="box">🤔 점수가 높은 음료는 <b>오미자·알룰로스 양</b>이 비슷할까?</div>
-      <div class="box">😋 ‘달다’, ‘시다’는 <b>사람마다</b> 다르게 느끼는데…</div>
-    </div>
-    <div class="ask">🔍 <b>정말 객관적으로</b> 맛을 나타내는 방법은 없을까?</div>`;
+// ---------- 반별 비교 자료 (교사 화면 메모리에만) ----------
+let CD = null;
+let cdLoading = false;
+function loadCD() {
+  if (CD || cdLoading) return;
+  cdLoading = true;
+  classData(S).then((d) => {
+    CD = d;
+    const list = d.classes.map((c) => ({ id: c.id, name: c.label.replace('1학년 ', '') }));
+    if (JSON.stringify(list) !== JSON.stringify(S.sess.view?.list)) setView(S, { list }).catch(console.error);
+    cdLoading = false;
+    render();
+  }).catch((e) => { console.error(e); CD = { classes: [], protos: [], cups: [] }; cdLoading = false; render(); });
+}
+const fmtMl = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+const bar = (rec, { text = false, dim = false } = {}) => {
+  const sum = Math.max(20, ING.reduce((t, i) => t + (rec[i.k] || 0), 0));
+  return ING.filter((i) => rec[i.k]).map((i) => {
+    const off = dim && (i.k === 'pear' || i.k === 'water');
+    return `<i style="width:${(rec[i.k] / sum) * 100}%;background:${off ? '#DDD8CF' : i.color};color:${off ? '#6E675F' : i.k === 'omija' ? '#fff' : 'var(--ink)'}">${text && rec[i.k] >= 2 ? fmtMl(rec[i.k]) : ''}</i>`;
+  }).join('');
+};
+const askBox = (qs) => `<div class="askp"><div class="h">모둠에서 찾아보자</div>${qs.map((t, i) => `<div class="q"><span>${i + 1}</span><p>${t}</p></div>`).join('')}</div>`;
+
+// 다른 반과 대조해 공통점 찾기 (학습목표 2)
+R.classes = () => {
+  if (!CD) return '<div class="hd"><h2>반별 자료를 불러오는 중…</h2></div>';
+  const v = S.sess.view || {};
+  const open = new Set(v.open || []);
+  const ratio = !!v.ratio;
+  const rows = CD.classes.map((c) => {
+    const num = ratio ? (c.recipe.syrup ? (c.recipe.omija / c.recipe.syrup).toFixed(2) : '–') : fmt1(c.score);
+    const sub = c.noBest ? `${c.date} · 모둠 베스트 평균` : c.me ? `오늘 · ${c.syrup}` : `${c.date} · ${c.syrup}`;
+    const isOpen = open.has(c.id);
+    return `<div class="crow ${c.me ? 'me' : ''}"><button class="cbtn" data-vopen="${esc(c.id)}"><span><b>${esc(c.label.replace('1학년 ', ''))}${c.me ? ' (우리)' : ''}</b><em>${isOpen ? '접기' : '펼치기'}</em></span><small>${esc(sub)}</small></button>
+      <div class="cbar">${bar(c.recipe, { text: true, dim: ratio })}</div><div class="cnum">${num}</div></div>
+      ${isOpen ? c.groups.map((g) => `<div class="crow thin"><div></div><div class="cbar">${bar(g.recipe, { dim: ratio })}</div><div></div></div>`).join('') : ''}`;
+  }).join('');
+  const legend = ING.map((i) => { const off = ratio && (i.k === 'pear' || i.k === 'water'); return `<span class="lg ${off ? 'off' : ''}"><i style="background:${off ? '#DDD8CF' : i.color}"></i>${i.short}</span>`; }).join('');
+  return `<div class="hd"><h2>반별 최고 레시피, <span class="r">공통점</span>을 찾자</h2><span class="pill">반 최우수 레시피 · 20 mL 기준</span></div>
+    <div class="cmp"><div class="cl"><div class="ctop"><button class="vbtn ink" data-vall>${open.size && open.size === CD.classes.length ? '모두 접기' : '모두 펼치기'}</button><button class="vbtn ${ratio ? 'on' : ''}" data-vratio>오미자 : 시럽 비율</button>${legend}<span class="cl2">${ratio ? '오미자÷시럽' : '시음 평균'}</span></div>
+      ${rows || '<p class="lead">아직 비교할 반이 없어요.</p>'}</div>
+      ${askBox(['오미자는 대체로 몇 mL를 넣었을까?', '가장 적게 넣은 재료는 무엇일까?', '점수가 높은 반과 낮은 반은 무엇이 다를까?'])}</div>`;
+};
+
+// 같은 재료·같은 컵인데 평가가 왜 다를까 → 객관적 지표로 (학습목표 2→3)
+const LAST_Q = '사람에 따라 달라지지 않는 숫자로 맛을 나타낼 수는 없을까?';
+const recipeKey = (r) => ING.map((i) => r[i.k] || 0).join('/');
+function spreadGroup() {
+  const ps = CD.protos.filter((p) => p.n >= 2 && !p.recipe.apple);
+  const by = {};
+  ps.forEach((p) => (by[p.recipe.omija || 0] ||= []).push(p));
+  const mls = Object.keys(by).map(Number).sort((a, b) => by[b].length - by[a].length || a - b).slice(0, 4).sort((a, b) => a - b);
+  // 완전히 같은 레시피 중 신맛 차이가 가장 큰 것
+  const same = {};
+  mls.flatMap((m) => by[m]).forEach((p) => (same[recipeKey(p.recipe)] ||= []).push(p));
+  const gap = (l) => Math.max(...l.map((p) => p.sour)) - Math.min(...l.map((p) => p.sour));
+  const dup = Object.values(same).filter((l) => l.length >= 2).sort((a, b) => gap(b) - gap(a))[0] || null;
+  const x = (v) => ((v - 1) / 4) * 100;
+  const ticks = [1, 2, 3, 4, 5].map((n) => `<span style="left:${x(n)}%">${n}점</span>`).join('');
+  const rows = mls.map((m) => {
+    const l = [...by[m]].sort((a, b) => a.sour - b.sour);
+    const ends = [];
+    l.forEach((p) => {
+      let k = ends.findIndex((e) => x(p.sour) - e >= 5.6);
+      if (k < 0) k = ends.length < 3 ? ends.length : 0;
+      ends[k] = x(p.sour);
+      p.lane = k;
+    });
+    const hot = dup && dup[0].recipe.omija === m;
+    const lanes = ends.length;
+    const dots = l.map((p) => `<i class="sdot ${(p.recipe.syrup || 0) >= 5 ? 'many' : ''} ${dup?.includes(p) ? 'same' : ''}" style="left:${x(p.sour)}%;top:${50 + (p.lane - (lanes - 1) / 2) * 32}%">${fmtMl(p.recipe.syrup || 0)}</i>`).join('');
+    return `<div class="srow ${hot ? 'hot' : ''}"><b>${m} mL</b><div class="sline"><u style="left:0"></u><u style="left:25%"></u><u style="left:50%"></u><u style="left:75%"></u><u style="left:100%"></u>${dots}</div><span class="sgap">${fmt1(gap(l))}</span></div>`;
+  }).join('');
+  const line = dup ? `<div class="sameline">${ING.map((i) => `${i.short} ${dup[0].recipe[i.k] || 0}`).join(' · ')}: <b>완전히 같은 레시피</b>인데 신맛 <b>${fmt1(Math.min(...dup.map((p) => p.sour)))}</b> ↔ <b>${fmt1(Math.max(...dup.map((p) => p.sour)))}점</b></div>` : '';
+  return `<div class="stop"><span class="lg"><i class="sdot st"></i>시럽 4 mL 이하</span><span class="lg"><i class="sdot st many"></i>시럽 5 mL 이상</span><span class="lg m">점 = 시제품 · 숫자 = 시럽 mL · 모든 반</span></div>
+    <div class="srow head"><b>오미자</b><div class="sline t">${ticks}</div><span class="sgap">신맛 차이</span></div>${rows || '<p class="lead">자료가 아직 없어요.</p>'}${line}`;
+}
+function spreadTaste() {
+  const cups = CD.cups.filter((c) => c.scores.length).map((c) => ({ ...c, avg: c.scores.reduce((a, b) => a + b, 0) / c.scores.length, gap: Math.max(...c.scores) - Math.min(...c.scores) })).sort((a, b) => b.avg - a.avg);
+  const top = Math.max(0, ...cups.map((c) => c.gap));
+  const rows = cups.map((c) => {
+    const cells = [1, 2, 3, 4, 5].map((n) => `<div class="tc">${c.scores.filter((v) => v === n).map(() => '<i></i>').join('')}</div>`).join('');
+    return `<div class="trw ${c.gap === top && top > 0 ? 'hot' : ''}"><div class="tl"><span class="gchip" style="--c:${gColor(c.g)}">${esc(String(c.g))}</span>컵 ${esc(String(c.cup))}</div>${cells}<span class="tn">${fmt1(c.avg)}</span><span class="tn">${c.gap}점</span></div>`;
+  }).join('');
+  return `<div class="stop"><span class="lg"><i class="sdot st ink"></i>소믈리에 1명의 점수</span><span class="lg m">우리 반 시음회 · 종합 맛</span></div>
+    <div class="trw head"><div></div>${[1, 2, 3, 4, 5].map((n) => `<span>${n}점</span>`).join('')}<span class="tn">평균</span><span class="tn">차이</span></div>${rows || '<p class="lead">시음 점수가 아직 없어요.</p>'}`;
+}
+R.spread = () => {
+  if (!CD) return '<div class="hd"><h2>평가 자료를 불러오는 중…</h2></div>';
+  const taste = S.sess.view?.tab === 'taste';
+  return `<div class="hd"><h2>${taste ? '같은 컵인데, <span class="r">점수</span>는 왜 다를까?' : '같은 오미자인데, <span class="r">신맛</span>은 왜 다를까?'}</h2><span class="pill">${taste ? '시음회 종합 맛' : '모둠 평가 신맛 · 평균 1~5점'}</span></div>
+    <div class="cmp"><div class="cl"><div class="ctop tabs"><button class="vbtn ${taste ? '' : 'ink'}" data-vtab="group">모둠 평가</button><button class="vbtn ${taste ? 'ink' : ''}" data-vtab="taste">시음회</button></div>
+      ${taste ? spreadTaste() : spreadGroup()}</div>
+      ${askBox(taste ? ['점수가 가장 많이 갈린 컵은 몇 번일까?', '같은 컵인데 왜 이렇게 다르게 매겼을까?', LAST_Q] : ['오미자 양이 같은데 신맛 점수가 벌어진 줄은 어디일까?', '시럽을 더 넣으면 정말 덜 시게 느꼈을까?', LAST_Q])}</div>`;
 };
 
 // 답: pH와 °Brix (다음 차시에 측정) + 마무리
-R.wrap = () => `<div class="hd"><h2>더 <span class="r">객관적</span>으로: pH와 °Brix</h2><span class="pill">다음 차시에 측정해요</span></div>
+R.wrap = () => `<div class="hd"><h2>맛을 더 <span class="r">객관적으로</span> 나타낼 지표</h2><span class="pill">다음 차시에 측정해요</span></div>
   <div class="obj4">
     <div class="box"><b>당도 <span class="u">°Brix</span></b><p><b>굴절당도계</b>: 물에 녹아 있는 당이 많을수록 빛이 더 꺾여요</p></div>
     <div class="box"><b>pH</b><p><b>pH 미터</b>: 산의 세기. 숫자가 작을수록 더 강한 산성</p></div>
@@ -340,8 +421,6 @@ R.wrap = () => `<div class="hd"><h2>더 <span class="r">객관적</span>으로: 
   <button class="sbtn lo" data-logout>로그아웃</button>`;
 
 // ---------- 팝업 ----------
-const recLine = (rec, syrup = '알룰로스') => [...ING.map((i) => [i.k === 'syrup' ? syrup : i.short, rec[i.k]]), ['사과즙', rec.apple]]
-  .filter(([, v]) => v).map(([n, v]) => `${n} <b>${v}</b>`).join(' · ');
 const POP = {
   rnd: () => `<span class="pill">실제 개발 사례 · 문경</span>
     <h3>문경 오미자로 만든 <span class="r">스파클링 음료</span></h3>
@@ -360,19 +439,6 @@ const POP = {
       <p>달기만 해도, 시기만 해도 안 돼요. <b>단맛과 신맛의 균형</b>을 숫자로 보는 거예요.</p></div>
       <div class="tip">우리 오미자 음료의<br>당산비는<br><b class="r">얼마일까?</b></div></div>
     <p class="src">출처: 경북매일(2021.1), 뉴스서울(서귀포시 품질검사) 보도 · 지역·단체마다 기준이 조금씩 달라요</p>`,
-  compare: () => {
-    const res = S.sess.results;
-    const mine = (res?.winners || []).map((g) => ({ cls: `${cls()} (우리 반)`, date: today(), g, score: res.groups?.[g]?.tasting, recipe: res.groups?.[g]?.recipe, syrup: '알룰로스', me: true }))
-      .filter((x) => x.recipe);
-    const list = [...mine, ...(S.sess.compare || [])];
-    const rows = list.map((x) => `<tr class="${x.me ? 'me' : ''}"><td class="c">${esc(x.cls)}<small>${esc(x.date)} · ${x.g}모둠</small></td>
-      <td>${cylinder(x.recipe, 'cylm')}</td><td class="rec">${recLine(x.recipe, x.syrup)}</td><td class="big">${fmt1(x.score)}</td></tr>`).join('');
-    return `<span class="pill">반 최우수 레시피 · 20 mL 기준</span>
-      <h3>다른 반 <span class="r">베스트</span>와 비교해 보자</h3>
-      ${list.length > 1 ? `<table class="ctable"><thead><tr><th>반</th><th></th><th>레시피 (mL)</th><th>시음 평균</th></tr></thead><tbody>${rows}</tbody></table>`
-    : '<p class="lead">리모컨 → 진행 탭에서 비교할 반을 골라 주세요.</p>'}
-      <p class="src">점수는 반마다 소믈리에가 달라서 그대로 비교하기는 어려워요. 레시피의 <b>비율</b>을 비교해 봐요.</p>`;
-  },
 };
 
 // 그린 뒤 이벤트 연결
