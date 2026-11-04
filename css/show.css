@@ -306,12 +306,9 @@ html,body{height:100%;overflow:hidden;background:#1d1b19}
 .ctop{display:flex;align-items:center;gap:.9cqi;margin-bottom:.3cqi;flex:none}
 .vbtn{height:2.2cqi;padding:0 .9cqi;border:2px solid var(--ink);border-radius:.6cqi;background:#fff;color:var(--ink);font:800 1.05cqi var(--body,inherit);font-family:inherit;cursor:pointer;white-space:nowrap}
 .vbtn.ink{background:var(--ink);color:var(--cream)}
-.vbtn.on{background:var(--g2)}
 .lg{display:inline-flex;align-items:center;gap:.4cqi;font-weight:700;font-size:1.1cqi;white-space:nowrap}
 .lg>i{width:1.1cqi;height:1.1cqi;border-radius:50%;border:2px solid var(--ink)}
-.lg.off{color:#6E675F}.lg.m{color:var(--mute)}
-.cl2{margin-left:auto;font-size:1.05cqi;font-weight:800;color:#6E675F;white-space:nowrap}
-.crow{display:grid;grid-template-columns:9.4cqi 1fr 4.2cqi;gap:.7cqi;align-items:center;border-radius:.7cqi;padding:.05cqi .4cqi}
+.crow{display:grid;grid-template-columns:9.4cqi 1fr;gap:.7cqi;align-items:center;border-radius:.7cqi;padding:.05cqi .4cqi}
 .crow.me{background:#FFF4C7}
 .crow.thin{padding-block:0}
 .cbtn{height:3cqi;border:2px solid var(--ink);border-radius:.7cqi;background:#fff;color:var(--ink);font-family:inherit;text-align:left;padding:0 .5cqi;cursor:pointer;display:flex;flex-direction:column;justify-content:center;min-width:0}
@@ -324,28 +321,11 @@ html,body{height:100%;overflow:hidden;background:#1d1b19}
 .cbar i:first-child{border-left:0}
 .crow.thin .cbar{height:.75cqi;border-width:1.5px;border-radius:.3cqi}
 .crow.thin .cbar i{border-left-width:1px}
-.cnum{font-family:var(--num);font-weight:700;font-size:1.9cqi;text-align:right}
 .askp{background:var(--ink);color:var(--cream);border-radius:1.1cqi;box-shadow:.35cqi .35cqi 0 var(--g2);padding:1.6cqi 1.8cqi;display:flex;flex-direction:column;gap:1.4cqi;min-height:0}
 .askp .h{font-family:var(--disp);font-size:2.1cqi;color:var(--g2)}
 .askp .q{display:flex;gap:.9cqi;align-items:flex-start}
 .askp .q span{font-family:var(--num);font-weight:700;font-size:1.8cqi;color:var(--g2);line-height:1.25}
 .askp .q p{font-size:1.6cqi;font-weight:700;line-height:1.4;word-break:keep-all}
-.stop{display:flex;align-items:center;gap:1.2cqi;flex:none;margin-bottom:.2cqi}
-.sdot{position:absolute;width:2.2cqi;height:2.2cqi;border-radius:50%;border:2px solid var(--ink);background:#D9264A;color:#fff;font:700 1.1cqi var(--num);font-style:normal;display:grid;place-items:center;transform:translate(-50%,-50%);box-sizing:border-box}
-.sdot.many{background:#6EA4F2;color:var(--ink)}
-.sdot.same{box-shadow:0 0 0 .22cqi var(--g2),0 0 0 .42cqi var(--ink);z-index:2}
-.sdot.st{position:static;transform:none;width:1.1cqi;height:1.1cqi}
-.sdot.st.ink{background:var(--ink)}
-.srow{display:grid;grid-template-columns:5.2cqi 1fr 5.4cqi;gap:1.4cqi;align-items:stretch;flex:1;min-height:0;border-radius:.7cqi;padding:0 .5cqi 0 .5cqi}
-.srow.head{flex:none;height:2.2cqi;align-items:center}
-.srow.head b{font-family:inherit;font-size:1.05cqi;font-weight:800;color:var(--mute)}
-.srow>b{font-family:var(--num);font-weight:700;font-size:1.8cqi;display:flex;align-items:center;white-space:nowrap}
-.srow.hot{background:#FFF4C7}
-.sline{position:relative;margin:0 1.4cqi}
-.sline u{position:absolute;top:0;bottom:0;border-left:1.5px solid #15151522;text-decoration:none}
-.sline.t span{position:absolute;top:50%;transform:translate(-50%,-50%);font:700 1.4cqi var(--num);color:var(--mute);white-space:nowrap}
-.sgap{align-self:center;text-align:right;font:700 1.7cqi var(--num)}
-.srow.head .sgap{font:800 1cqi inherit;font-family:inherit;color:var(--mute);white-space:nowrap}
 .sameline{flex:none;margin-top:.4cqi;border:2px solid var(--ink);border-radius:.7cqi;background:#fff;padding:.45cqi .9cqi;font-size:1.35cqi;font-weight:700;text-align:center}
 .sameline b{color:var(--accent)}
 .trw{display:grid;grid-template-columns:8.6cqi repeat(5,1fr) 4.4cqi 4.4cqi;gap:.3cqi;align-items:center;flex:1;min-height:0;border-radius:.7cqi;padding:0 .6cqi}
@@ -358,3 +338,6 @@ html,body{height:100%;overflow:hidden;background:#1d1b19}
 .trw.hot .tc i{background:var(--accent)}
 .tn{text-align:right;font:700 1.7cqi var(--num)}
 .trw.head .tn{font:800 1.05cqi inherit;font-family:inherit}
+.pin .side{display:flex;flex-direction:column;gap:1cqi;align-items:center}
+.pin .side img{height:19cqi;width:auto;display:block;border:var(--bd);border-radius:1cqi}
+.pin .side .tip{padding:.9cqi 1.4cqi;font-size:1.9cqi;text-align:center}

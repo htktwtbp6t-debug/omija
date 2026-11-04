@@ -148,14 +148,8 @@ function viewSec(id) {
     const list = v.list || [];
     const open = new Set(v.open || []);
     return `<div class="sec"><h3>TV 화면 조작</h3>
-      <div class="tbtns"><button class="btn sm ghost" data-vall>${open.size && open.size === list.length ? '모두 접기' : '모두 펼치기'}</button>
-        <button class="btn sm ${v.ratio ? 'ink' : 'ghost'}" data-vratio>오미자 : 시럽 비율</button></div>
+      <div class="tbtns"><button class="btn sm ghost" data-vall>${open.size && open.size === list.length ? '모두 접기' : '모두 펼치기'}</button></div>
       <div class="tbtns" style="margin-top:6px">${list.map((c) => `<button class="btn sm ${open.has(c.id) ? 'ink' : 'ghost'}" data-vopen="${esc(c.id)}">${esc(c.name)}</button>`).join('')}</div></div>`;
-  }
-  if (id === 'spread') {
-    return `<div class="sec"><h3>TV 화면 조작</h3><div class="tbtns">
-      <button class="btn sm ${v.tab === 'taste' ? 'ghost' : 'ink'}" data-vtab="group">모둠 평가</button>
-      <button class="btn sm ${v.tab === 'taste' ? 'ink' : 'ghost'}" data-vtab="taste">시음회</button></div></div>`;
   }
   return '';
 }
@@ -244,7 +238,7 @@ function tabEnd() {
 function bind() {
   $$('[data-nav]').forEach((b) => b.addEventListener('click', () => step(Number(b.dataset.nav))));
   $$('[data-pop]').forEach((b) => b.addEventListener('click', () => setPop(S, b.dataset.pop).catch((e) => toast(e.message))));
-  $$('[data-vall],[data-vratio],[data-vtab],[data-vopen]').forEach((b) => b.addEventListener('click', () => viewAct(S, b.dataset).catch((e) => toast(e.message))));
+  $$('[data-vall],[data-vopen]').forEach((b) => b.addEventListener('click', () => viewAct(S, b.dataset).catch((e) => toast(e.message))));
   $$('[data-slide]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.slide))));
   $$('[data-absent]').forEach((b) => b.addEventListener('click', () => {
     const s = b.dataset.absent;

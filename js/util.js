@@ -35,7 +35,7 @@ export const DECK = [
   { id: 'reveal', stage: 'reveal', title: '결과 공개: 컵 뒤집기' },
   { id: 'result', stage: 'reveal', title: '결과 공개: 모둠별 정리' },
   { id: 'classes', stage: 'reveal', title: '정리: 반별 최고 레시피' },
-  { id: 'spread', stage: 'reveal', title: '정리: 같은 레시피, 다른 평가' },
+  { id: 'spread', stage: 'reveal', title: '정리: 같은 컵, 다른 점수' },
   { id: 'wrap', stage: 'wrap', title: '정리: 더 객관적인 방법 · 마무리', pops: [['case', '당산비 사례 (한라봉)']] },
 ];
 export const slideIdx = (id) => DECK.findIndex((d) => d.id === id);
