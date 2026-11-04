@@ -297,3 +297,33 @@ html,body{height:100%;overflow:hidden;background:#1d1b19}
 .slide[data-id="wrap"] .ask{margin-top:auto}
 .sbtn.lo{position:absolute;right:14cqi;bottom:1.2cqi;z-index:4;font-size:1.2cqi;opacity:.6}
 .sbtn.lo:hover{opacity:1}
+/* 5장 학습목표 */
+.goals3{display:flex;align-items:stretch;gap:1cqi;flex:1;min-height:0}
+.goals3>em{font-style:normal;font-size:3cqi;font-weight:900;align-self:center}
+.goals3 .box{flex:1;min-width:0;display:flex;flex-direction:column;gap:1.2cqi}
+.goals3 .t{display:flex;align-items:center;gap:1cqi}
+.goals3 .n{width:4cqi;height:4cqi;flex:none;border-radius:50%;border:var(--bd);background:var(--g2);font-family:var(--num);font-weight:700;font-size:2.2cqi;display:grid;place-items:center}
+.goals3 b{font-family:var(--disp);font-weight:400;font-size:2.8cqi}
+.goals3 p{font-size:2cqi;font-weight:800;line-height:1.4;flex:1}
+.goals3 .ms{display:flex;flex-direction:column;gap:.5cqi}
+.goals3 .ms span{border:2px solid var(--ink);border-radius:.7cqi;background:#fff;padding:.3cqi .7cqi;font-size:1.4cqi;font-weight:700;text-align:center}
+/* 학습목표 띠 (6~15장) */
+.slide.band{padding-bottom:6cqi}
+.gband{position:absolute;left:0;right:0;bottom:0;height:4.6cqi;z-index:3;background:var(--ink);display:grid;grid-template-columns:auto .55fr 1fr 1fr;gap:.8cqi;align-items:center;padding:0 1.6cqi;word-break:keep-all}
+.gband .gl{font-family:var(--disp);color:var(--g2);font-size:1.5cqi;white-space:nowrap}
+.gband div{display:flex;align-items:center;gap:.6cqi;min-width:0;color:var(--cream);border-radius:.6cqi;padding:.3cqi .8cqi;font-weight:700;font-size:1.25cqi;line-height:1.25}
+.gband div.on{background:var(--g2);color:var(--ink)}
+.gband i{font-style:normal;font-family:var(--num);font-size:1.35cqi}
+.slide.band .pager{bottom:5cqi}
+.slide.band .popbtns,.slide.band .sbtn.lo{bottom:5.2cqi}
+.timer{bottom:calc((100vh - min(100vh,56.25vw))/2 + .046*min(100vw,177.78vh) + .8vw)}
+.goals3 p{font-size:2.3cqi}
+.slide.band .how .illo{height:7.4cqi}
+.slide[data-id="wrap"]{padding-bottom:9.4cqi}
+.slide[data-id="wrap"] .obj4 .box{min-height:17cqi}
+.slide[data-id="result"] .hd{margin-bottom:.8cqi}
+.slide[data-id="result"] .rtable{border-spacing:0 .4cqi;font-size:1.45cqi}
+.slide[data-id="result"] .rtable td{padding:.25cqi .7cqi;line-height:1.25}
+.slide[data-id="result"] .rtable th{padding-bottom:0}
+.slide[data-id="result"] .rtable .cylm{height:5.4cqi;width:2.4cqi}
+.slide[data-id="result"] .rtable .big{font-size:2.2cqi}

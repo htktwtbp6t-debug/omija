@@ -25,7 +25,7 @@ export const DECK = [
   { id: 'group', stage: 'grouping', title: '모둠 배치' },
   { id: 'supplies', stage: 'grouping', title: '준비물 챙기기' },
   { id: 'hook', stage: 'intro', title: '도입: 맛을 숫자로?', pops: [['rnd', '문경 오미자 개발 사례']] },
-  { id: 'process', stage: 'intro', title: '도입: 탐구의 큰 그림' },
+  { id: 'process', stage: 'intro', title: '도입: 큰 그림 · 학습목표' },
   { id: 'promise', stage: 'intro', title: '도입: 오미자 · 오늘의 약속' },
   { id: 'rules', stage: 'brief', title: '개발 안내: 재료와 규칙', steps: 7 },
   { id: 'steps', stage: 'brief', title: '개발 안내: 하는 방법' },

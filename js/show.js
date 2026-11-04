@@ -59,6 +59,16 @@ function tickTimer() {
 }
 setInterval(tickTimer, 500);
 
+// ---------- 학습목표 띠 ----------
+const GOALS = [
+  '맛있는 레시피를 찾아본다',
+  '맛있다고 평가된 다른 학급 레시피들과 대조하여 공통점을 찾아본다',
+  '맛을 더 객관적으로 나타낼 수 있는 지표는 무엇이 있을지 알아본다',
+];
+// 슬라이드별 지금 목표 (없는 장은 띠 없음)
+const GOAL_NOW = { promise: 0, rules: 0, steps: 0, board: 0, tprep: 0, ttaste: 0, reveal: 0, result: 1, measure: 1, wrap: 2 };
+const goalBand = (now) => `<div class="gband"><span class="gl">학습목표</span>${GOALS.map((t, i) => `<div class="${i === now ? 'on' : ''}"><i>${i + 1}</i><span>${t}</span></div>`).join('')}</div>`;
+
 // ---------- 그리기 ----------
 const R = {};
 function render() {
@@ -67,6 +77,8 @@ function render() {
   const sl = DECK[idx];
   let html = (R[sl.id] || (() => ''))();
   html += `<div class="pager">${idx + 1} / ${DECK.length}</div>`;
+  const goalNow = GOAL_NOW[sl.id];
+  if (goalNow !== undefined) html += goalBand(goalNow);
   const pop = S.sess.pop && sl.pops?.some(([k]) => k === S.sess.pop) ? S.sess.pop : null;
   if (pop) html += `<div class="pop" data-pop="${pop}"><div class="pin">${POP[pop]()}</div></div>`;
   else if (sl.pops) html += `<div class="popbtns">${sl.pops.map(([k, n]) => `<button class="sbtn" data-popk="${k}">${n}</button>`).join('')}</div>`;
@@ -79,7 +91,7 @@ function render() {
   const fresh = !stage.firstElementChild || stage.firstElementChild.dataset.id !== sl.id;
   lastHtml = html;
   if (fresh) {
-    stage.innerHTML = `<section class="slide ${sl.id === 'hook' ? 's1' : ''}" data-id="${sl.id}">${html}</section>`;
+    stage.innerHTML = `<section class="slide ${sl.id === 'hook' ? 's1' : ''} ${goalNow !== undefined ? 'band' : ''}" data-id="${sl.id}">${html}</section>`;
   } else {
     const el = stage.firstElementChild;
     el.style.animation = 'none';
@@ -107,18 +119,18 @@ R.hook = () => `<div class="l">
   <div class="rc">${cylinder({ omija: 7, pear: 5, syrup: 4, water: 4 })}<div class="badge">오미자<small>다섯 가지 맛</small></div></div>
   <div class="marq"><div>${'<span>안전</span><span class="s">✦</span><span>손 씻기</span><span class="s">✦</span><span>정직한 기록</span><span class="s">✦</span><span>먹었으면 평가</span><span class="s">✦</span><span>협력</span><span class="s">✦</span>'.repeat(2)}</div></div>`;
 
-R.process = () => `<div class="hd"><h2>탐구의 <span class="r">큰 그림</span></h2><span class="pill">오늘 할 탐구</span></div>
-  <div class="road">
-    <div class="box now"><span class="tag">오늘</span><b>맛있는 레시피 찾기</b><p>사람의 감각으로 평가 (관능평가)</p>
-      <div class="mini"><span>만들기</span><em>→</em><span>맛 평가</span><em>→</em><span>고치기</span><em>↺ 2~3번</em></div>
-      <div class="mini"><span>반 대표 블라인드 시음회</span></div></div>
+R.process = () => `<div class="hd"><h2>탐구의 <span class="r">큰 그림</span>: 오늘의 학습목표</h2><span class="pill">학습목표 3가지</span></div>
+  <div class="goals3">
+    <div class="box" style="background:#FFF4D6"><div class="t"><span class="n">1</span><b>찾기</b></div><p>${GOALS[0]}</p>
+      <div class="ms"><span>만들기 → 맛 평가 → 고치기 ↺ 2~3번</span><span>반 대표 블라인드 시음회</span></div></div>
     <em>→</em>
-    <div class="box"><span class="tag">기록</span><b>데이터로 남기기</b><p>느낌을 말로만 하지 않고</p>
-      <div class="mini"><span>레시피 → mL 숫자</span></div><div class="mini"><span>맛 → 1~5점</span></div><div class="mini"><span>모둠·반 평균</span></div></div>
+    <div class="box" style="background:#E7F8F0"><div class="t"><span class="n">2</span><b>대조하기</b></div><p>${GOALS[1]}</p>
+      <div class="ms"><span>다른 반 베스트와 나란히 보기</span><span>맛있는 레시피의 공통점</span></div></div>
     <em>→</em>
-    <div class="box end"><b>맛있는 음료의<br>데이터</b><p>가능한 한<br>객관적으로!</p></div>
+    <div class="box" style="background:#E4EEFD"><div class="t"><span class="n">3</span><b>객관적으로</b></div><p>${GOALS[2]}</p>
+      <div class="ms"><span>‘맛있다’는 사람마다 달라요</span><span>더 객관적인 방법은?</span></div></div>
   </div>
-  <p class="lead" style="text-align:center;margin-top:3cqi">‘맛있다’는 느낌을 <b>가능한 한 객관적인 자료</b>로 남겨 보자. 오늘은 <b class="r">그 레시피를 찾는 날</b>이에요.</p>`;
+  <p class="lead" style="text-align:center;margin-top:2cqi">‘맛있다’는 느낌을 <b>가능한 한 객관적인 자료</b>로 남겨 보자.</p>`;
 
 R.promise = () => `<div class="hd"><h2>우리 동네 특산품 <span class="r">오미자</span>로 음료를 만들어 보자</h2></div>
   <div class="omi"><p class="lead">오미자(五味子) = <b>다섯 가지 맛</b>이 난다는 열매</p>
